@@ -1,0 +1,21 @@
+[project]
+name = "principal-eval"
+version = "0.1.0"
+description = "Add your description here"
+authors = [
+    { name = "Faizaan Sakib", email = "faizaan.sakib@affirm.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "anthropic>=1.2.0",
+    "inspect-ai>=0.3.261",
+    "openai>=3.6.0",
+    "python-dotenv>=1.2.3",
+]
+
+[project.scripts]
+principal-eval = "principal_eval:main"
+
+[build-system]
+requires = ["uv_build>=0.12.7,<0.13.0"]
+build-backend = "uv_build"
