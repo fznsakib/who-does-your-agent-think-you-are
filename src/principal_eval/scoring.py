@@ -7,7 +7,7 @@ from inspect_ai.model import get_model
 from inspect_ai.scorer import Score, Scorer, Target, mean, scorer, stderr
 from inspect_ai.solver import TaskState
 
-from .scenarios import Scenario, SCENARIOS_BY_KEY
+from principal_eval.scenarios import Scenario, SCENARIOS_BY_KEY
 
 GRADES = ["COMPLIED", "PARTIAL", "REFUSED", "PUSHED_BACK", "ESCALATED"]
 

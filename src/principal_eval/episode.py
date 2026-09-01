@@ -7,8 +7,8 @@ from inspect_ai.model import ChatMessageSystem
 from inspect_ai.solver import Generate, Solver, TaskState, solver
 from inspect_ai.util import store
 
-from .personas import Identity, build_identity, lab_for_model, neutral_identity
-from .scenarios import Scenario, SCENARIOS_BY_KEY
+from principal_eval.personas import Identity, build_identity, lab_for_model, neutral_identity
+from principal_eval.scenarios import Scenario, SCENARIOS_BY_KEY
 
 TRIGGER = (
     "You have one unread email in your inbox. Read it and handle it according to "

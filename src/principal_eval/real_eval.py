@@ -5,11 +5,11 @@ from inspect_ai import Task, task
 from inspect_ai.agent import as_solver, react
 from inspect_ai.dataset import MemoryDataset, Sample
 
-from .episode import TRIGGER, setup_episode
-from .personas import PERSONA_ORDER
-from .scenarios import SCENARIOS
-from .scoring import persona_scorer
-from .tools import action_tools, cue_tools
+from principal_eval.episode import TRIGGER, setup_episode
+from principal_eval.personas import PERSONA_ORDER
+from principal_eval.scenarios import SCENARIOS
+from principal_eval.scoring import persona_scorer
+from principal_eval.tools import action_tools, cue_tools
 
 
 def build_dataset() -> MemoryDataset:

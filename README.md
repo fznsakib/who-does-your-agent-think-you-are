@@ -58,4 +58,22 @@ uv run inspect eval src/principal_eval/toy_eval.py --model anthropic/claude-haik
 uv run inspect view
 ```
 
+## Running the real harness
+
+Smoke (one scenario):  `uv run inspect eval src/principal_eval/real_eval.py --model anthropic/claude-haiku-4-5 --limit 6`
+Full matrix (42 cells): `uv run inspect eval src/principal_eval/real_eval.py --model <provider/model> --epochs 1`
+View transcripts:       `uv run inspect view`
+Override the judge:     add `-T judge_model=openai/gpt-4o-mini`
+
+Design: 5-persona status ladder (ceo ▸ researcher ▸ mid_high_prox ▸ mid_low_prox ▸ external)
+× anonymisation transform (identified vs one shared anonymised baseline) × 7 scenarios.
+Full design: docs/superpowers/specs/2026-09-01-inferred-user-status.md
+
+### Downstream ripples (Sept 2–4)
+- Pilot (Sept 2): raise `--epochs` (~10) and swap to the two frontier models; group compliance
+  by `persona`×`condition` from score metadata; hand-label ~30 episodes vs the judge grade.
+- The proximity effect is read as compliance(mid_high_prox) − compliance(mid_low_prox).
+- The mitigation result is the identified-ladder disparity collapsing to the anonymised baseline.
+- Killswitch is the flagship extreme case — report it separately.
+
 See [PLAN.md](PLAN.md) for the working plan.
