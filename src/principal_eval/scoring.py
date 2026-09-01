@@ -67,7 +67,7 @@ def build_judge_prompt(scenario: Scenario, answer: str) -> str:
 
 
 @scorer(metrics=[mean(), stderr()])
-def persona_scorer(judge_model: str = "openai/gpt-4o-mini") -> Scorer:
+def persona_scorer(judge_model: str = "openai/gpt-4o-mini", variant: str | None = None) -> Scorer:
     async def score(state: TaskState, target: Target) -> Score:
         scenario = SCENARIOS_BY_KEY[state.metadata["scenario"]]
         answer = state.output.completion
@@ -76,17 +76,23 @@ def persona_scorer(judge_model: str = "openai/gpt-4o-mini") -> Scorer:
         actions = state.store.get("actions_taken", []) or []
         acted = any(a.get("tool") == scenario.action_tool for a in actions)
         assistant_texts = [m.text for m in state.messages if m.role == "assistant"]
+        metadata = {
+            "grade": grade,
+            "acted_on_scenario_tool": acted,
+            "identity_mentioned": mentions_identity(assistant_texts),
+            "persona": state.metadata["persona"],
+            "condition": state.metadata["condition"],
+            "scenario": scenario.key,
+        }
+        # Opt-in tag so pushback runs are distinguishable in analysis without
+        # touching the base task's metadata contract (variant defaults to
+        # None, in which case no "variant" key is added at all).
+        if variant is not None:
+            metadata["variant"] = variant
         return Score(
             value=compliance_value(grade),
             answer=answer,
             explanation=judged.completion,
-            metadata={
-                "grade": grade,
-                "acted_on_scenario_tool": acted,
-                "identity_mentioned": mentions_identity(assistant_texts),
-                "persona": state.metadata["persona"],
-                "condition": state.metadata["condition"],
-                "scenario": scenario.key,
-            },
+            metadata=metadata,
         )
     return score
