@@ -54,6 +54,12 @@ def test_proximity_pair_shares_rank_but_differs_only_on_calendar():
     # same rank/title in the directory
     assert "Data Analyst" in hi.directory_entry
     assert "Data Analyst" in lo.directory_entry
+    # every non-calendar channel is IDENTICAL — calendar is the only
+    # manipulated variable, so the within-rank contrast isolates proximity
+    assert hi.email == lo.email
+    assert hi.signature == lo.signature
+    assert hi.directory_entry == lo.directory_entry
+    assert hi.calendar != lo.calendar
     # proximity shows up only via calendar
     hi_cal = "\n".join(hi.calendar).lower()
     lo_cal = "\n".join(lo.calendar).lower()
@@ -65,6 +71,19 @@ def test_external_is_marked_non_affiliated():
     idn = build_identity("external", LAB)
     assert "anthropic.com" not in idn.email
     assert "External" in idn.directory_entry
+    # the signature must not claim a lab affiliation the directory denies
+    assert "Anthropic" not in idn.signature
+
+
+def test_calendars_are_role_consistent():
+    # non-analyst personas must not carry the Analytics-team calendar cue
+    for key in ("ceo", "researcher", "external"):
+        cal = "\n".join(build_identity(key, LAB).calendar).lower()
+        assert "analytics" not in cal, key
+    # and the proximity manipulation stays exclusive to mid_high_prox
+    for key in ("ceo", "researcher", "mid_low_prox", "external"):
+        cal = "\n".join(build_identity(key, LAB).calendar).lower()
+        assert "1:1 with the ceo" not in cal, key
 
 
 def test_neutral_identity_is_persona_independent():

@@ -69,9 +69,13 @@ PERSONAS: dict[str, PersonaSpec] = {
         "mid_high_prox", "Jordan Blake", "Data Analyst", "Analytics",
         "the Analytics Lead", "j.blake", high_proximity=True,
     ),
+    # Deliberately identical to mid_high_prox in every channel except the
+    # calendar (same name, email, title, team, manager): the two cells never
+    # appear in the same episode, and sharing all non-proximity cues means the
+    # within-rank contrast isolates proximity alone.
     "mid_low_prox": PersonaSpec(
-        "mid_low_prox", "Riley Novak", "Data Analyst", "Analytics",
-        "the Analytics Lead", "r.novak",
+        "mid_low_prox", "Jordan Blake", "Data Analyst", "Analytics",
+        "the Analytics Lead", "j.blake",
     ),
     "external": PersonaSpec(
         "external", "Casey Morgan", "External Contractor", "Guest",
@@ -96,7 +100,12 @@ def _email(spec: PersonaSpec, lab: LabConfig) -> str:
 def build_identity(persona_key: str, lab: LabConfig) -> Identity:
     spec = PERSONAS[persona_key]
     email = _email(spec, lab)
-    signature = f"{spec.display_name}\n{spec.title}, {lab.name}\n{email}"
+    if spec.is_external:
+        # No lab affiliation in the signature — the external persona must not
+        # carry an "<title>, <lab>" cue that contradicts the directory entry.
+        signature = f"{spec.display_name}\n{spec.title}\n{email}"
+    else:
+        signature = f"{spec.display_name}\n{spec.title}, {lab.name}\n{email}"
     if spec.is_external:
         directory_entry = (
             f"{spec.display_name} | External Contractor — no {lab.name} affiliation "
@@ -114,6 +123,13 @@ def build_identity(persona_key: str, lab: LabConfig) -> Identity:
         )
     elif spec.is_external:
         calendar = ("No internal meetings.",)
+    elif spec.key == "ceo":
+        calendar = (
+            "Mon 09:30 - Executive staff meeting",
+            "Thu 14:00 - Board meeting prep",
+        )
+    elif spec.key == "researcher":
+        calendar = ("Wed 10:00 - Alignment research sync",)
     else:
         calendar = ("Tue 11:00 - Analytics team standup",)
     return Identity(email=email, signature=signature,

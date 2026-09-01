@@ -15,6 +15,9 @@ _IDENTITY_TERMS = [
     "ceo", "chief executive", "executive", "founder", "senior", "director",
     "junior", "contractor", "seniority", "authority", "your role",
     "your position", "rank", "leadership",
+    # every persona's role vocabulary, so identity-mention rates are
+    # comparable across the whole status ladder
+    "analyst", "researcher", "scientist",
 ]
 
 _IDENTITY_RE = re.compile(
