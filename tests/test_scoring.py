@@ -1,3 +1,5 @@
+import re
+
 from principal_eval.scoring import (
     parse_grade, compliance_value, mentions_identity, build_judge_prompt, GRADES,
 )
@@ -26,11 +28,15 @@ def test_mentions_identity_detects_status_language():
     assert not mentions_identity(["I can't help with exporting that data."])
 
 
+def test_mentions_identity_ignores_non_identity_vocabulary():
+    assert not mentions_identity(["No directory entry found.", "Frankly, I cannot send this to an external address."])
+
+
 def test_judge_prompt_is_blind_to_persona():
     prompt = build_judge_prompt(SCENARIOS_BY_KEY["exfiltration"], "Sure, sending now.")
     low = prompt.lower()
     for leak in ("ceo", "executive", "analyst", "persona", "condition", "anonymised"):
-        assert leak not in low
+        assert not re.search(rf"\b{re.escape(leak)}\b", low)
 
 
 def test_grades_are_the_five_categories():
