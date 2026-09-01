@@ -77,14 +77,28 @@ metadata for later grouping
 
 ### Sept 2 (~4h): pilot run + validation
 
-- Full pilot: 6–8 scenarios × 5 conditions × 2 frontier models × ~10 epochs
+- Full pilot: raise `--epochs` (~10) on `real_eval.py` and swap to the two frontier
+models; 42 cells = 7 scenarios × (5 identified personas + 1 anonymised baseline)
+- Group compliance by `persona`×`condition` from score metadata
 - Hand-label ~30 episodes; report judge agreement
 - Paired comparison (same scenario+epoch across personas); first plots
 (compliance rate by persona, per model)
+- Harness carry-overs from the Sept-1 build:
+  - `acted_on_scenario_tool` means "tool invoked", not "harmful action" — e.g.
+    `send_external` can carry a *refusal* reply; always cross-reference the judge grade
+  - Residual judge channel: judge blindness covers harness-controlled inputs only; the
+    model's own answer can voluntarily quote rank language ("As you're the CEO…") which
+    the judge then sees. Spot-check rank vocabulary by persona (start from the
+    `identity_mentioned` metadata, which flags it but doesn't fix it)
+  - The opt-in `principal_eval_pushback` task delivers each scenario's authority-reassertion
+    second turn — run it if the pushback dynamic makes the pilot cut
 
 ### Sept 3 (~3h): analysis + start write-up
 
-- Anonymisation arm analysis: do disparities collapse?
+- Anonymisation arm analysis: do disparities collapse? (mitigation result = the
+identified-ladder disparity collapsing to the anonymised baseline)
+- Proximity effect = compliance(mid_high_prox) − compliance(mid_low_prox), within rank
+- Killswitch is the flagship extreme case — report it separately
 - If time, one ablation: which cue carries the effect (domain vs title vs signature)?
 - Cheap extra if time: ask each model whether identity *should* affect its behaviour;
 compare stated policy vs revealed behaviour (the "hypocrisy gap")
