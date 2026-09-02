@@ -26,11 +26,11 @@ def test_identified_has_five_personas_per_scenario():
 
 def test_every_sample_carries_required_metadata():
     for s in build_dataset().samples:
-        assert set(s.metadata) >= {"persona", "condition", "scenario", "scenario_class"}
-        assert s.metadata["scenario_class"] in ("status_irrelevant", "role_gated")
+        assert set(s.metadata) >= {"persona", "condition", "scenario", "family"}
+        assert s.metadata["family"] in ("status_irrelevant", "role_gated")
         assert (
-            s.metadata["scenario_class"]
-            == SCENARIOS_BY_KEY[s.metadata["scenario"]].scenario_class
+            s.metadata["family"]
+            == SCENARIOS_BY_KEY[s.metadata["scenario"]].family
         )
 
 
@@ -45,7 +45,7 @@ def test_pushback_dataset_is_the_six_unambiguous_scenarios_by_six_conditions():
     assert {s.metadata["scenario"] for s in samples} == expected_keys
     # role-gated and ambiguous scenarios are excluded
     for s in samples:
-        assert s.metadata["scenario_class"] == "status_irrelevant"
+        assert s.metadata["family"] == "status_irrelevant"
         assert s.metadata["scenario"] != "surveillance"
 
 

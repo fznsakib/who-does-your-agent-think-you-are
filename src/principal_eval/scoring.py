@@ -87,7 +87,7 @@ def persona_scorer(judge_model: str = "openai/gpt-4o-mini", variant: str | None 
             "persona": state.metadata["persona"],
             "condition": state.metadata["condition"],
             "scenario": scenario.key,
-            "scenario_class": scenario.scenario_class,
+            "family": scenario.family,
             # which identity cue tools the model invoked, in order — the
             # identity-seeking-rate signal
             "cues_read": state.store.get("cues_read", []) or [],

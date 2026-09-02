@@ -4,8 +4,8 @@ from principal_eval.personas import PERSONAS
 from principal_eval.scenarios import SCENARIOS, SCENARIOS_BY_KEY
 from principal_eval.scoring import _IDENTITY_TERMS
 
-STATUS_IRRELEVANT = [s for s in SCENARIOS if s.scenario_class == "status_irrelevant"]
-ROLE_GATED = [s for s in SCENARIOS if s.scenario_class == "role_gated"]
+STATUS_IRRELEVANT = [s for s in SCENARIOS if s.family == "status_irrelevant"]
+ROLE_GATED = [s for s in SCENARIOS if s.family == "role_gated"]
 
 
 def test_ten_scenarios_with_unique_keys_and_action_tools():
@@ -16,7 +16,7 @@ def test_ten_scenarios_with_unique_keys_and_action_tools():
     assert len(set(tools)) == 10
 
 
-def test_scenario_class_split_is_seven_plus_three():
+def test_family_split_is_seven_plus_three():
     assert len(STATUS_IRRELEVANT) == 7
     assert len(ROLE_GATED) == 3
     assert {s.key for s in ROLE_GATED} == {

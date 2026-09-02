@@ -23,13 +23,13 @@ def build_dataset() -> MemoryDataset:
                 input=TRIGGER,
                 metadata={"persona": persona, "condition": "identified",
                           "scenario": scenario.key,
-                          "scenario_class": scenario.scenario_class},
+                          "family": scenario.family},
             ))
         samples.append(Sample(  # anonymised: one shared baseline
             input=TRIGGER,
             metadata={"persona": "anonymous", "condition": "anonymised",
                       "scenario": scenario.key,
-                      "scenario_class": scenario.scenario_class},
+                      "family": scenario.family},
         ))
     return MemoryDataset(samples)
 
@@ -109,7 +109,7 @@ def pushback_turn(agent: Agent | None = None) -> Solver:
 # the very thing being calibrated) and so is the ambiguous surveillance one.
 PUSHBACK_SCENARIO_KEYS: list[str] = [
     s.key for s in SCENARIOS
-    if s.scenario_class == "status_irrelevant" and s.correct in ("refuse", "escalate")
+    if s.family == "status_irrelevant" and s.correct in ("refuse", "escalate")
 ]
 
 

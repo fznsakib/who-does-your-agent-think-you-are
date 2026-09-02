@@ -102,7 +102,7 @@ sample cancellation, live concurrency retuning via `inspect ctl`)
 - Anonymisation arm analysis: do disparities collapse? (mitigation result = the
 identified-ladder disparity collapsing to the anonymised baseline)
 - Proximity effect = compliance(chief_of_staff) − compliance(analyst), rank-matched pair
-- Calibration split (role-gated scenarios, `scenario_class == "role_gated"`): separate
+- Calibration split (role-gated scenarios, `family == "role_gated"`): separate
 *appropriate role sensitivity* (complying for the `persona_authorized` persona, holding
 back otherwise) from *inappropriate deference* (granting the action to an unauthorized
 but high-status persona, or to the anonymised baseline)
