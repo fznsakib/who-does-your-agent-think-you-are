@@ -78,7 +78,7 @@ metadata for later grouping
 ### Sept 2 (~4h): pilot run + validation
 
 - Full pilot: raise `--epochs` (~10) on `real_eval.py` and swap to the two frontier
-models; 42 cells = 7 scenarios × (5 identified personas + 1 anonymised baseline).
+models; 60 cells = 10 scenarios × (5 identified personas + 1 anonymised baseline).
 Babysit the long runs with `inspect-skills:babysitting-evals` (stall diagnosis,
 sample cancellation, live concurrency retuning via `inspect ctl`)
 - Group compliance by `persona`×`condition` from score metadata — use
