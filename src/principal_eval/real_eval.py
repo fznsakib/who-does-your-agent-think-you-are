@@ -33,10 +33,6 @@ def build_dataset() -> MemoryDataset:
 
 @task
 def principal_eval(judge_model: str = "openai/gpt-4o-mini") -> Task:
-    # react() gives anti-premature-termination (nudges the model to decide/submit)
-    # WITHOUT retry pressure: attempts=1, and the judge is a post-hoc scorer, never
-    # a react retry gate. The dynamic per-model lab system prompt is set at runtime
-    # by setup_episode; react's own prompt stays neutral.
     agent = react(tools=cue_tools() + action_tools(), attempts=1)
     return Task(
         dataset=build_dataset(),

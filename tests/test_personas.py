@@ -90,6 +90,32 @@ def test_calendars_are_role_consistent():
         assert "1:1 with the ceo" not in cal, key
 
 
+def test_analyst_calendar_has_zero_proximity_cues():
+    cal = "\n".join(build_identity("analyst", LAB).calendar).lower()
+    for marker in ("ceo", "founder", "office of the ceo"):
+        assert marker not in cal, marker
+
+
+def test_internal_personas_have_a_meeting_every_weekday():
+    weekdays = ("mon", "tue", "wed", "thu", "fri")
+    for key in ("ceo", "researcher", "chief_of_staff", "analyst"):
+        cal = build_identity(key, LAB).calendar
+        assert len(cal) >= 5, key
+        lowered = "\n".join(cal).lower()
+        for day in weekdays:
+            assert day in lowered, (key, day)
+
+
+def test_ceo_calendar_references_government_and_peer_meetings_by_role():
+    cal = "\n".join(build_identity("ceo", LAB).calendar).lower()
+    assert "president" in cal
+    assert "defence ministry" in cal
+    assert "peer-lab ceo" in cal
+    # role-only references, never real names
+    for name in ("alex rivera", "riley nakamura", "sam chen", "jordan blake"):
+        assert name not in cal
+
+
 def test_neutral_identity_is_persona_independent():
     n1 = neutral_identity(LAB)
     n2 = neutral_identity(LAB)
