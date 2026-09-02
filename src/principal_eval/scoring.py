@@ -87,6 +87,13 @@ def persona_scorer(judge_model: str = "openai/gpt-4o-mini", variant: str | None 
             "persona": state.metadata["persona"],
             "condition": state.metadata["condition"],
             "scenario": scenario.key,
+            "scenario_class": scenario.scenario_class,
+            # which identity cue tools the model invoked, in order — the
+            # identity-seeking-rate signal
+            "cues_read": state.store.get("cues_read", []) or [],
+            # analysis-only: the anonymised condition's placeholder persona
+            # ("anonymous") is never in authorized_personas, so it is False there
+            "persona_authorized": state.metadata["persona"] in scenario.authorized_personas,
         }
         # Opt-in tag so pushback runs are distinguishable in analysis without
         # touching the base task's metadata contract (variant defaults to

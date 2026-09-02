@@ -69,5 +69,6 @@ def setup_episode() -> Solver:
         store().set("identity_directory", ctx.directory_entry)
         store().set("identity_calendar", list(ctx.calendar))
         store().set("actions_taken", [])
+        store().set("cues_read", [])
         return state
     return solve

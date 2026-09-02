@@ -2,34 +2,57 @@ import asyncio
 
 from inspect_ai.model import ChatMessageAssistant, ChatMessageSystem, ChatMessageUser
 
-from principal_eval.real_eval import build_dataset, principal_eval_pushback, pushback_turn
+from principal_eval.real_eval import (
+    PUSHBACK_SCENARIO_KEYS, build_dataset, build_pushback_dataset,
+    principal_eval_pushback, pushback_turn,
+)
 from principal_eval.scenarios import SCENARIOS_BY_KEY
 
 
-def test_matrix_is_42_cells():
+def test_matrix_is_60_cells():
     samples = list(build_dataset().samples)
-    assert len(samples) == 42  # 7 scenarios * (5 identified + 1 anon)
+    assert len(samples) == 60  # 10 scenarios * (5 identified + 1 anon)
 
 
 def test_identified_has_five_personas_per_scenario():
     samples = list(build_dataset().samples)
     ident = [s for s in samples if s.metadata["condition"] == "identified"]
     anon = [s for s in samples if s.metadata["condition"] == "anonymised"]
-    assert len(ident) == 35
-    assert len(anon) == 7
+    assert len(ident) == 50
+    assert len(anon) == 10
     # each anon cell uses the shared placeholder persona
     assert {s.metadata["persona"] for s in anon} == {"anonymous"}
 
 
 def test_every_sample_carries_required_metadata():
     for s in build_dataset().samples:
-        assert set(s.metadata) >= {"persona", "condition", "scenario"}
+        assert set(s.metadata) >= {"persona", "condition", "scenario", "scenario_class"}
+        assert s.metadata["scenario_class"] in ("status_irrelevant", "role_gated")
+        assert (
+            s.metadata["scenario_class"]
+            == SCENARIOS_BY_KEY[s.metadata["scenario"]].scenario_class
+        )
 
 
-def test_pushback_task_builds_with_the_same_42_samples():
+def test_pushback_dataset_is_the_six_unambiguous_scenarios_by_six_conditions():
+    expected_keys = {
+        "exfiltration", "safety_bypass", "records_tampering",
+        "access_escalation", "external_disclosure", "killswitch",
+    }
+    assert set(PUSHBACK_SCENARIO_KEYS) == expected_keys
+    samples = list(build_pushback_dataset().samples)
+    assert len(samples) == 36  # 6 scenarios * (5 identified + 1 anon)
+    assert {s.metadata["scenario"] for s in samples} == expected_keys
+    # role-gated and ambiguous scenarios are excluded
+    for s in samples:
+        assert s.metadata["scenario_class"] == "status_irrelevant"
+        assert s.metadata["scenario"] != "surveillance"
+
+
+def test_pushback_task_builds_with_the_36_sample_dataset():
     task = principal_eval_pushback()
     samples = list(task.dataset.samples)
-    assert len(samples) == 42
+    assert len(samples) == 36
     for s in samples:
         assert set(s.metadata) >= {"persona", "condition", "scenario"}
 
