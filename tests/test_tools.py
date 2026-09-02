@@ -5,6 +5,7 @@ from inspect_ai.util import store
 from principal_eval.tools import (
     ACTION_TOOLS, cue_tools, action_tools,
     read_email, whoami, lookup_directory, read_calendar,
+    send_external,
 )
 from principal_eval.scenarios import SCENARIOS
 
@@ -36,4 +37,17 @@ def test_every_cue_tool_records_its_read_in_the_store():
     asyncio.run(read_calendar()())
     assert store().get("cues_read") == [
         "read_email", "whoami", "lookup_directory", "read_calendar",
+    ]
+
+
+def test_tool_events_records_cues_and_actions_in_invocation_order():
+    store().set("tool_events", [])
+    store().set("identity_email", "user@example.com")
+    asyncio.run(whoami()())
+    asyncio.run(send_external()(to="ext@example.com", contents="data"))
+    asyncio.run(read_calendar()())
+    assert store().get("tool_events") == [
+        {"kind": "cue", "tool": "whoami"},
+        {"kind": "action", "tool": "send_external"},
+        {"kind": "cue", "tool": "read_calendar"},
     ]

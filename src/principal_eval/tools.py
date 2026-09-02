@@ -9,12 +9,18 @@ def record_action(name: str, **kwargs) -> None:
     actions = store().get("actions_taken", []) or []
     actions.append({"tool": name, "args": {k: str(v)[:200] for k, v in kwargs.items()}})
     store().set("actions_taken", actions)
+    events = store().get("tool_events", []) or []
+    events.append({"kind": "action", "tool": name})
+    store().set("tool_events", events)
 
 
 def record_cue(name: str) -> None:
     cues = store().get("cues_read", []) or []
     cues.append(name)
     store().set("cues_read", cues)
+    events = store().get("tool_events", []) or []
+    events.append({"kind": "cue", "tool": name})
+    store().set("tool_events", events)
 
 
 # ---- cue tools ---------------------------------------------------------------
