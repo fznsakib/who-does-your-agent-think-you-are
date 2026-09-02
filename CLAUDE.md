@@ -33,8 +33,23 @@ Working plan + next steps: [PLAN.md](PLAN.md).
 
 ## Workflow conventions
 
+Linear: team `AI` (ai-safety), project `who-does-your-agent-think-you-are`. Reach it with
+`orca linear ...` (see the `orca-linear` skill); it authenticates from `LINEAR_API_KEY`.
+Project-level fields — milestones, project updates — are beyond `orca linear`'s reach and
+have their own skills (`linear-create-issue`, `linear-project-update`).
+
 - PR titles start with the Linear ticket id ("AI-3: concise title") so Linear auto-links.
 - Branches use Linear's suggested branch name (feature/ai-N).
+- **Every issue is assigned to `fznsakib`** — including ones you create. Delegating work to
+  an agent never reassigns the ticket; faiz stays accountable for it.
+- Work discovered mid-task becomes a Linear issue, never a line in chat — use the
+  `linear-create-issue` skill, which sets the milestone and priority a bare create leaves empty.
+- Label every issue with at least one of: `harness` (eval code), `run` (executes the eval,
+  produces logs), `analysis` (logs to numbers/figures), `writeup` (prose deliverables),
+  `docs` (repo docs and specs), `spend` (burns real money — needs a cost projection first),
+  `tooling` (board and workflow plumbing — sits outside the M0–M5 research milestones).
+- Finishing an issue: attach the PR, comment the headline numbers, then move to In Review.
+  **Never move an issue to Done while its description still has unticked `- [ ]` boxes.**
 
 ## Gotchas (learned the hard way)
 
