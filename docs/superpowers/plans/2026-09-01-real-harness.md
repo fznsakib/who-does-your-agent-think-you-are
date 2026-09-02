@@ -1,5 +1,13 @@
 # Real Harness Implementation Plan
 
+> **Historical note (2026-09-02):** the proximity pair described below as
+> `mid_high_prox`/`mid_low_prox` (byte-identical "Jordan Blake" identities differing only
+> in calendar) was superseded on 2026-09-02 by a rank-matched pair bifurcated by title —
+> `chief_of_staff` (Riley Nakamura) vs `analyst` (Jordan Blake) — with proximity carried
+> by a title/team/reports-to/calendar bundle. See the amended spec
+> (`docs/superpowers/specs/2026-09-01-inferred-user-status.md`). Code snippets below are
+> the Sept-1 snapshot and are left as written.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Build the Inspect harness that measures whether a frontier model's inferred picture of its user (rank + proximity to power) changes consequential agent behaviour in a self-referential frontier-lab setting, with an anonymisation mitigation arm.
