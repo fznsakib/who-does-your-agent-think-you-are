@@ -1,0 +1,105 @@
+import asyncio
+
+from inspect_ai.model import ChatMessageAssistant, ChatMessageSystem, ChatMessageUser
+
+from principal_eval.real_eval import build_dataset, principal_eval_pushback, pushback_turn
+from principal_eval.scenarios import SCENARIOS_BY_KEY
+
+
+def test_matrix_is_42_cells():
+    samples = list(build_dataset().samples)
+    assert len(samples) == 42  # 7 scenarios * (5 identified + 1 anon)
+
+
+def test_identified_has_five_personas_per_scenario():
+    samples = list(build_dataset().samples)
+    ident = [s for s in samples if s.metadata["condition"] == "identified"]
+    anon = [s for s in samples if s.metadata["condition"] == "anonymised"]
+    assert len(ident) == 35
+    assert len(anon) == 7
+    # each anon cell uses the shared placeholder persona
+    assert {s.metadata["persona"] for s in anon} == {"anonymous"}
+
+
+def test_every_sample_carries_required_metadata():
+    for s in build_dataset().samples:
+        assert set(s.metadata) >= {"persona", "condition", "scenario"}
+
+
+def test_pushback_task_builds_with_the_same_42_samples():
+    task = principal_eval_pushback()
+    samples = list(task.dataset.samples)
+    assert len(samples) == 42
+    for s in samples:
+        assert set(s.metadata) >= {"persona", "condition", "scenario"}
+
+
+def test_pushback_task_uses_two_solvers_setup_then_pushback_turn():
+    task = principal_eval_pushback()
+    # setup_episode() + pushback_turn(): base task's own solver/dataset/
+    # metadata contract is untouched (a separate @task/@solver pair).
+    assert len(task.solver) == 2
+
+
+def test_pushback_turn_appends_scenario_pushback_and_avoids_duplicate_system_msgs():
+    from inspect_ai.agent import AgentState
+
+    # Fake a minimal react-like agent (matches react()'s documented
+    # behavior: it unconditionally inserts its own ChatMessageSystem at
+    # index 0 of whatever messages it's handed, then appends one assistant
+    # reply) to isolate pushback_turn's message-composition logic without
+    # hitting a real model.
+    calls: list[list] = []
+
+    async def fake_agent(agent_state: AgentState) -> AgentState:
+        messages = list(agent_state.messages)
+        calls.append(list(messages))  # snapshot before mutating
+        messages.insert(0, ChatMessageSystem(content="react system prompt"))
+        messages.append(ChatMessageAssistant(content=f"reply #{len(calls)}"))
+        agent_state.messages = messages
+        return agent_state
+
+    solver = pushback_turn(agent=fake_agent)
+
+    class FakeState:
+        def __init__(self):
+            self.messages = [ChatMessageSystem(content="persona system prompt")]
+            self.output = None
+            self.metadata = {"scenario": "exfiltration"}
+
+    state = FakeState()
+    result = asyncio.run(solver(state, generate=None))
+
+    # exactly two agent invocations: first cycle + pushback cycle
+    assert len(calls) == 2
+
+    # first call was handed the untouched persona system message (no
+    # react system message yet -- that only gets inserted by the agent)
+    assert [m.content for m in calls[0]] == ["persona system prompt"]
+    assert all(isinstance(m, ChatMessageSystem) for m in calls[0])
+
+    # second call was NOT handed a duplicated react system message: the
+    # one inserted by the first call was stripped before the pushback
+    # user message was appended
+    second_call_messages = calls[1]
+    system_msgs = [m for m in second_call_messages if isinstance(m, ChatMessageSystem)]
+    assert len(system_msgs) == 1
+    assert system_msgs[0].content == "persona system prompt"
+
+    # the pushback line was appended as a user message, after the first
+    # cycle's assistant reply, before the second agent call
+    assert isinstance(second_call_messages[-1], ChatMessageUser)
+    assert second_call_messages[-1].content == SCENARIOS_BY_KEY["exfiltration"].pushback
+
+    # final result reflects the SECOND (post-pushback) cycle's messages:
+    # exactly one persona system message + one react system message (the
+    # single copy re-inserted by the second call) -- not duplicated.
+    final_system_msgs = [m for m in result.messages if isinstance(m, ChatMessageSystem)]
+    assert [m.content for m in final_system_msgs] == ["react system prompt", "persona system prompt"]
+    assert isinstance(result.messages[-1], ChatMessageAssistant)
+    assert result.messages[-1].content == "reply #2"
+
+
+def test_pushback_lines_exist_for_every_scenario():
+    for key, scenario in SCENARIOS_BY_KEY.items():
+        assert scenario.pushback and isinstance(scenario.pushback, str)

@@ -20,80 +20,102 @@ filter?* Sanity-check every number by hand; hand-label episodes to validate the 
 ### Reading path (~2–2.5h, in this order)
 
 1. **Tutorial + core workflow** (~45 min) — the whole loop in one sitting:
-   - https://inspect.aisi.org.uk/ (intro page)
-   - https://inspect.aisi.org.uk/tutorial.html
-   - https://inspect.aisi.org.uk/options.html (CLI options: `--model`, `--epochs`, `--limit`)
-   - https://inspect.aisi.org.uk/log-viewer.html (`inspect view` — you'll live in this)
-   - *Why:* Task/Sample/solver/scorer is 90% of the mental model.
-
+  - [https://inspect.aisi.org.uk/](https://inspect.aisi.org.uk/) (intro page)
+  - [https://inspect.aisi.org.uk/tutorial.html](https://inspect.aisi.org.uk/tutorial.html)
+  - [https://inspect.aisi.org.uk/options.html](https://inspect.aisi.org.uk/options.html) (CLI options: `--model`, `--epochs`, `--limit`)
+  - [https://inspect.aisi.org.uk/log-viewer.html](https://inspect.aisi.org.uk/log-viewer.html) (`inspect view` — you'll live in this)
+  - *Why:* Task/Sample/solver/scorer is 90% of the mental model.
 2. **Solvers, tools, agents** (~45 min) — how tool-using agents work:
-   - https://inspect.aisi.org.uk/solvers.html
-   - https://inspect.aisi.org.uk/tools.html (the `@tool` pattern used in `toy_eval.py`)
-   - https://inspect.aisi.org.uk/agents.html (the `react()` agent — likely the real
-     harness's solver; multi-step tool use with a submit tool)
-   - *Why:* the real eval is "agent gets tools whose outputs leak identity cues".
-     Note: you do **not** need a sandbox — your tools return hand-written fixtures.
-   - Concept checklist — can you explain each? `Task`, `Sample`, solver chain,
-     `TaskState` (messages/output/metadata), `@tool`, scorer vs metric, epochs,
-     `eval()` from Python vs `inspect eval` CLI.
-
+  - [https://inspect.aisi.org.uk/solvers.html](https://inspect.aisi.org.uk/solvers.html)
+  - [https://inspect.aisi.org.uk/tools.html](https://inspect.aisi.org.uk/tools.html) (the `@tool` pattern used in `toy_eval.py`)
+  - [https://inspect.aisi.org.uk/agents.html](https://inspect.aisi.org.uk/agents.html) (the `react()` agent — likely the real
+  harness's solver; multi-step tool use with a submit tool)
+  - *Why:* the real eval is "agent gets tools whose outputs leak identity cues".
+  Note: you do **not** need a sandbox — your tools return hand-written fixtures.
+  - Concept checklist — can you explain each? `Task`, `Sample`, solver chain,
+  `TaskState` (messages/output/metadata), `@tool`, scorer vs metric, epochs,
+  `eval()` from Python vs `inspect eval` CLI.
 3. **Scorers + a real example** (~30 min):
-   - https://inspect.aisi.org.uk/scorers.html (esp. model-graded + custom scorers)
-   - Skim one eval in https://github.com/UKGovernmentBEIS/inspect_evals for
-     conventions (a sycophancy or agentic one, e.g. `sycophancy` or `agentharm`).
-   - *Why:* your headline metric comes from an LLM judge you must later validate.
-
+  - [https://inspect.aisi.org.uk/scorers.html](https://inspect.aisi.org.uk/scorers.html) (esp. model-graded + custom scorers)
+  - Skim one eval in [https://github.com/UKGovernmentBEIS/inspect_evals](https://github.com/UKGovernmentBEIS/inspect_evals) for
+  conventions (a sycophancy or agentic one, e.g. `sycophancy` or `agentharm`).
+  - *Why:* your headline metric comes from an LLM judge you must later validate.
 4. Optional (15 min): Anthropic's *Recommended directions* — the "persona effects on
-   behaviour in safety-critical settings" section, for write-up framing.
-   https://alignment.anthropic.com/2025/recommended-directions/
+ behaviour in safety-critical settings" section, for write-up framing.
+ [https://alignment.anthropic.com/2025/recommended-directions/](https://alignment.anthropic.com/2025/recommended-directions/)
 
 ### Hands-on (~1–1.5h)
 
-- [ ] `cp .env.example .env`, paste in your Anthropic + OpenAI keys
-- [ ] `uv run inspect eval src/principal_eval/toy_eval.py --model anthropic/claude-haiku-4-5 --epochs 3`
-- [ ] `uv run inspect view` — read full transcripts; find the judge's reasoning
-- [ ] Run the tool variant: `...toy_eval.py@deference_toy_tools` — watch the model
-      call `lookup_directory` in the transcript
-- [ ] Re-run with `--model openai/<current-mini-model>` (proves both providers wired)
-- [ ] Modify something: add a 4th persona, or a second scenario Sample, and re-run.
-      You're ready for tomorrow when editing the eval feels routine.
+- [x] `cp .env.example .env`, paste in your Anthropic + OpenAI keys
+- [x] `uv run inspect eval src/principal_eval/toy_eval.py --model anthropic/claude-haiku-4-5 --epochs 3`
+- [x] `uv run inspect view` — read full transcripts; find the judge's reasoning
+- [x] Run the tool variant: `...toy_eval.py@deference_toy_tools` — watch the model
+
+  call `lookup_directory` in the transcript
+- [x] Re-run with `--model openai/<current-mini-model>` (proves both providers wired)
+- [x] Modify something: add a 4th persona, or a second scenario Sample, and re-run.
+
+  You're ready for tomorrow when editing the eval feels routine.
 
 ---
 
 ## Sprint (the ~16h application clock)
 
 ### Sept 1 (full day, ~8h): build the real harness
+
 - `tools.py`: mock `read_email`, `search_files`, `lookup_directory`, `read_calendar`,
-  `send_message` — identity cues live in tool *outputs*, not the user message
+`send_message` — identity cues live in tool *outputs*, not the user message
 - `personas.py`: exec / AI safety researcher / mid-level employee / civilian /
-  anonymised control — as fixture sets the tools draw from
+anonymised control — as fixture sets the tools**** draw from
 - `scenarios/`: 6–8 scenarios, each identity-irrelevant by design
-  (borderline-policy, pushback-required, escalation-required, ambiguous-sensitive-info)
+(borderline-policy, pushback-required, escalation-required, ambiguous-sensitive-info)
 - Solver: `react()` agent with the mock tools
 - Judge: model-graded scorer with a written rubric →
-  {COMPLIED, PARTIAL, REFUSED, PUSHED_BACK, ESCALATED}; store persona/scenario in
-  metadata for later grouping
+{COMPLIED, PARTIAL, REFUSED, PUSHED_BACK, ESCALATED}; store persona/scenario in
+metadata for later grouping
 - Smoke-run everything on haiku / gpt-mini
 
 ### Sept 2 (~4h): pilot run + validation
-- Full pilot: 6–8 scenarios × 5 conditions × 2 frontier models × ~10 epochs
+
+- Full pilot: raise `--epochs` (~10) on `real_eval.py` and swap to the two frontier
+models; 42 cells = 7 scenarios × (5 identified personas + 1 anonymised baseline).
+Babysit the long runs with `inspect-skills:babysitting-evals` (stall diagnosis,
+sample cancellation, live concurrency retuning via `inspect ctl`)
+- Group compliance by `persona`×`condition` from score metadata — use
+`inspect-skills:analyzing-logs` (cross-log dataframes via `inspect_ai.analysis`;
+`inspect-skills:reading-logs` for raw `.eval` access)
 - Hand-label ~30 episodes; report judge agreement
 - Paired comparison (same scenario+epoch across personas); first plots
-  (compliance rate by persona, per model)
+(compliance rate by persona, per model)
+- Harness carry-overs from the Sept-1 build:
+  - `acted_on_scenario_tool` means "tool invoked", not "harmful action" — e.g.
+    `send_external` can carry a *refusal* reply; always cross-reference the judge grade
+  - Residual judge channel: judge blindness covers harness-controlled inputs only; the
+    model's own answer can voluntarily quote rank language ("As you're the CEO…") which
+    the judge then sees. Spot-check rank vocabulary by persona (start from the
+    `identity_mentioned` metadata, which flags it but doesn't fix it)
+  - The opt-in `principal_eval_pushback` task delivers each scenario's authority-reassertion
+    second turn — run it if the pushback dynamic makes the pilot cut
 
 ### Sept 3 (~3h): analysis + start write-up
-- Anonymisation arm analysis: do disparities collapse?
+
+- Anonymisation arm analysis: do disparities collapse? (mitigation result = the
+identified-ladder disparity collapsing to the anonymised baseline)
+- Proximity effect = compliance(chief_of_staff) − compliance(analyst), rank-matched pair
+- Killswitch is the flagship extreme case — report it separately
 - If time, one ablation: which cue carries the effect (domain vs title vs signature)?
 - Cheap extra if time: ask each model whether identity *should* affect its behaviour;
-  compare stated policy vs revealed behaviour (the "hypocrisy gap")
+compare stated policy vs revealed behaviour (the "hypocrisy gap")
 - Draft write-up skeleton
 
-### Sept 4 (~3h + 2h polish): write-up + submit
+###  Sept 4 (~3h + 2h polish): write-up + submit
+
 - 1–3 pages: exec summary → method → key graph(s) → limitations →
-  next steps (probing for inferred-user-status features; model organism of secret loyalty)
+next steps (probing for inferred-user-status features; model organism of secret loyalty)
 - Application form answers (adapt from the project doc)
 - Submit before 11:59pm PT
 
 ### Budget
+
 Haiku / gpt-mini for all debugging; frontier models only for the real pilot runs.
 Expected spend: well under £50 at pilot scale.
