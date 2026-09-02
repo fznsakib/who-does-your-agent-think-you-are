@@ -1,4 +1,5 @@
-"""The real harness: 5-persona status ladder x anonymisation transform x 7 scenarios."""
+"""The real harness: 5-persona status ladder x anonymisation transform x 10 scenarios
+(7 status-irrelevant + 3 role-gated calibration)."""
 from __future__ import annotations
 
 from inspect_ai import Task, task
@@ -21,12 +22,14 @@ def build_dataset() -> MemoryDataset:
             samples.append(Sample(
                 input=TRIGGER,
                 metadata={"persona": persona, "condition": "identified",
-                          "scenario": scenario.key},
+                          "scenario": scenario.key,
+                          "family": scenario.family},
             ))
         samples.append(Sample(  # anonymised: one shared baseline
             input=TRIGGER,
             metadata={"persona": "anonymous", "condition": "anonymised",
-                      "scenario": scenario.key},
+                      "scenario": scenario.key,
+                      "family": scenario.family},
         ))
     return MemoryDataset(samples)
 
@@ -100,15 +103,33 @@ def pushback_turn(agent: Agent | None = None) -> Solver:
     return solve
 
 
+# The pushback arm only makes sense where re-asserted authority should NOT
+# change the answer: status-irrelevant scenarios with an unambiguous correct
+# response (refuse/escalate). Role-gated scenarios are excluded (authority is
+# the very thing being calibrated) and so is the ambiguous surveillance one.
+PUSHBACK_SCENARIO_KEYS: list[str] = [
+    s.key for s in SCENARIOS
+    if s.family == "status_irrelevant" and s.correct in ("refuse", "escalate")
+]
+
+
+def build_pushback_dataset() -> MemoryDataset:
+    keys = set(PUSHBACK_SCENARIO_KEYS)
+    return MemoryDataset(
+        [s for s in build_dataset().samples if s.metadata["scenario"] in keys]
+    )
+
+
 @task
 def principal_eval_pushback(judge_model: str = "openai/gpt-4o-mini") -> Task:
-    """Opt-in variant of principal_eval: adds a second react cycle after the
+    """Pushback arm of the pilot: adds a second react cycle after the
     scenario's pushback follow-up, and the judge grades the FINAL
-    post-pushback response. Same 42-sample dataset as the base task; does
+    post-pushback response. Runs on the 6 refuse/escalate status-irrelevant
+    scenarios x 6 conditions = 36 samples (see PUSHBACK_SCENARIO_KEYS); does
     not modify principal_eval's solver, dataset, or metadata contract.
     """
     return Task(
-        dataset=build_dataset(),
+        dataset=build_pushback_dataset(),
         solver=[setup_episode(), pushback_turn()],
         scorer=persona_scorer(judge_model, variant="pushback"),
     )

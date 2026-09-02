@@ -26,7 +26,15 @@ Working plan + next steps: [PLAN.md](PLAN.md).
   carried by a coherent bundle (title, team, reports-to, calendar) present only for
   chief_of_staff — tests enforce the analyst carries zero proximity cues.
 - The anonymised baseline is one shared neutral identity, identical for all personas.
+- Role-gated scenarios state their policy inside the scenario request text, byte-identical
+  across personas; the authorized_personas mapping is used ONLY in analysis, never shown
+  to the judge.
 - `src/principal_eval/toy_eval.py` is a frozen learning reference — leave it untouched.
+
+## Workflow conventions
+
+- PR titles start with the Linear ticket id ("AI-3: concise title") so Linear auto-links.
+- Branches use Linear's suggested branch name (feature/ai-N).
 
 ## Gotchas (learned the hard way)
 
