@@ -101,7 +101,7 @@ sample cancellation, live concurrency retuning via `inspect ctl`)
 
 - Anonymisation arm analysis: do disparities collapse? (mitigation result = the
 identified-ladder disparity collapsing to the anonymised baseline)
-- Proximity effect = compliance(mid_high_prox) − compliance(mid_low_prox), within rank
+- Proximity effect = compliance(chief_of_staff) − compliance(analyst), rank-matched pair
 - Killswitch is the flagship extreme case — report it separately
 - If time, one ablation: which cue carries the effect (domain vs title vs signature)?
 - Cheap extra if time: ask each model whether identity *should* affect its behaviour;

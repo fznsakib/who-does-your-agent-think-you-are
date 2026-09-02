@@ -32,8 +32,8 @@ def test_persona_order_is_importance_ranked():
     assert PERSONA_ORDER == [
         "ceo",
         "researcher",
-        "mid_high_prox",
-        "mid_low_prox",
+        "chief_of_staff",
+        "analyst",
         "external",
     ]
     assert set(PERSONA_ORDER) == set(PERSONAS)
@@ -48,23 +48,27 @@ def test_ceo_identity_leaks_rank_through_channels():
     assert "Anthropic" in idn.signature
 
 
-def test_proximity_pair_shares_rank_but_differs_only_on_calendar():
-    hi = build_identity("mid_high_prox", LAB)
-    lo = build_identity("mid_low_prox", LAB)
-    # same rank/title in the directory
-    assert "Data Analyst" in hi.directory_entry
-    assert "Data Analyst" in lo.directory_entry
-    # every non-calendar channel is IDENTICAL — calendar is the only
-    # manipulated variable, so the within-rank contrast isolates proximity
-    assert hi.email == lo.email
-    assert hi.signature == lo.signature
-    assert hi.directory_entry == lo.directory_entry
-    assert hi.calendar != lo.calendar
-    # proximity shows up only via calendar
-    hi_cal = "\n".join(hi.calendar).lower()
-    lo_cal = "\n".join(lo.calendar).lower()
-    assert "ceo" in hi_cal or "founder" in hi_cal
-    assert "ceo" not in lo_cal and "founder" not in lo_cal
+def test_proximity_pair_is_rank_matched_with_bundle_on_one_side():
+    cos = build_identity("chief_of_staff", LAB)
+    an = build_identity("analyst", LAB)
+    # chief_of_staff carries the proximity bundle across its channels
+    assert "Office of the CEO" in cos.directory_entry
+    assert "reports to: the CEO" in cos.directory_entry
+    assert "1:1 with the CEO" in "\n".join(cos.calendar)
+    # the analyst carries ZERO proximity cues in any channel
+    an_blob = "\n".join(
+        [an.signature, an.directory_entry, *an.calendar]
+    ).lower()
+    for marker in ("ceo", "founder", "office of the ceo"):
+        assert marker not in an_blob, marker
+    # rank-matched but distinct people: different titles, names, emails
+    assert PERSONAS["chief_of_staff"].title != PERSONAS["analyst"].title
+    assert PERSONAS["chief_of_staff"].display_name != PERSONAS["analyst"].display_name
+    assert cos.email != an.email
+    # neither side is an executive-rank title (match the full phrase:
+    # "Chief of Staff" contains "Chief" but is not "Chief Executive")
+    assert "Chief Executive" not in PERSONAS["chief_of_staff"].title
+    assert "Chief Executive" not in PERSONAS["analyst"].title
 
 
 def test_external_is_marked_non_affiliated():
@@ -80,8 +84,8 @@ def test_calendars_are_role_consistent():
     for key in ("ceo", "researcher", "external"):
         cal = "\n".join(build_identity(key, LAB).calendar).lower()
         assert "analytics" not in cal, key
-    # and the proximity manipulation stays exclusive to mid_high_prox
-    for key in ("ceo", "researcher", "mid_low_prox", "external"):
+    # and the proximity manipulation stays exclusive to chief_of_staff
+    for key in ("ceo", "researcher", "analyst", "external"):
         cal = "\n".join(build_identity(key, LAB).calendar).lower()
         assert "1:1 with the ceo" not in cal, key
 

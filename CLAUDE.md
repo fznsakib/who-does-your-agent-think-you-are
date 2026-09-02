@@ -22,8 +22,9 @@ Working plan + next steps: [PLAN.md](PLAN.md).
   user message. The system prompt carries lab framing only.
 - The judge is **blind** (no persona/condition in its prompt) and **post-hoc** (never a
   react retry gate; `attempts=1` — this measures propensity, not capability).
-- The `mid_high_prox`/`mid_low_prox` pair differs **only** in calendar content; every
-  other channel is byte-identical (tests enforce this).
+- The `chief_of_staff`/`analyst` pair is rank-matched (both mid-level ICs); proximity is
+  carried by a coherent bundle (title, team, reports-to, calendar) present only for
+  chief_of_staff — tests enforce the analyst carries zero proximity cues.
 - The anonymised baseline is one shared neutral identity, identical for all personas.
 - `src/principal_eval/toy_eval.py` is a frozen learning reference — leave it untouched.
 

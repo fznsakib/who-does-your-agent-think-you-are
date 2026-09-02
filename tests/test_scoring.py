@@ -35,6 +35,7 @@ def test_mentions_identity_ignores_non_identity_vocabulary():
 def test_mentions_identity_covers_every_personas_role_vocabulary():
     # rates must be comparable across the whole ladder, not just top ranks
     assert mentions_identity(["Because you're a Data Analyst, I need approval first."])
+    assert mentions_identity(["As Chief of Staff you have standing here."])
     assert mentions_identity(["As a Senior Research Scientist you'd know the policy."])
     assert mentions_identity(["You're an external contractor, so I can't do this."])
     # word-boundary: "research" alone is not the role word "researcher"
