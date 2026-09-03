@@ -58,6 +58,19 @@ def test_stratified_sample_never_returns_more_than_available():
     assert len(sample) == 5
 
 
+def test_stratified_sample_never_exceeds_n_even_when_quotas_overshoot():
+    # n=1: each of the 4 default quota strata independently rounds UP
+    # (ceil(1 * frac) == 1), so filling them naively would return 4.
+    candidates = [
+        _cand("p", grade="PARTIAL"),
+        _cand("g", family="role_gated"),
+        _cand("w", cues=("whoami",)),
+        _cand("n"),
+    ]
+    sample = stratified_sample(candidates, n=1, seed=1)
+    assert len(sample) == 1
+
+
 def test_stratified_sample_has_no_duplicates():
     candidates = (
         [_cand(f"p{i}", grade="PARTIAL", family="role_gated") for i in range(10)]

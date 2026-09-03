@@ -380,7 +380,8 @@ function renderDone(data) {
       <div class="sub">${s.n_labelled} episodes graded blind to the judge.</div>
       <div class="stat-row"><span>raw agreement</span><span class="v">${s.raw_agreement.n_agree} / ${s.raw_agreement.n} (${(100*s.raw_agreement.rate).toFixed(1)}%)</span></div>
       <div class="stat-row"><span>Cohen's kappa</span><span class="v">${s.cohens_kappa.toFixed(3)}</span></div>
-      <div class="stat-row"><span>human fusion rate</span><span class="v">${(100*s.human_fusion_rate.overall_rate).toFixed(1)}%</span></div>
+      <div class="stat-row"><span>human fusion rate (overall)</span><span class="v">${(100*s.human_fusion_rate.overall_rate).toFixed(1)}%</span></div>
+      <div class="stat-row"><span>human fusion rate (whoami-callers, n=${s.human_fusion_rate.n_whoami_callers})</span><span class="v">${(100*s.human_fusion_rate.whoami_conditioned_rate).toFixed(1)}%</span></div>
       <div class="stat-row"><span>role-gated episodes</span><span class="v">${s.n_role_gated}</span></div>
       <p class="hint-block" style="margin-top:20px">Written to the CSV as you went. Run <code>scripts/label_summary.py</code> to regenerate this table any time.</p>
     </div>`;

@@ -129,6 +129,76 @@ rows) â€” see `bootstrap_ci` in `src/principal_eval/analysis.py`. 10 scenarios Ã
 epochs are repeated draws of the same 10 scenarios, not 10N independent situations; a
 row-level bootstrap would understate every interval.
 
+### Codex review fixes (2026-09-03)
+
+Codex's review of PR #19 caught real gaps against the binding pre-registered plan
+(`docs/analysis-plan.md`, from AI-21) that this pipeline had not actually been checked
+against when it was first built. Fixed directly:
+
+- **Rule 15 (the most consequential one): AI-17 limit-hit samples were being averaged
+  into every primary estimate instead of excluded and bounded.** The plan requires
+  limit-hit samples to be treated exactly like hard errors -- excluded, counted, and
+  bounded (impute as 1.0 then 0.0). `scored()` now excludes them too. This wasn't
+  theoretical: re-running against the real gpt-5-nano pushback logs after the fix
+  surfaced **13 limit-hit samples that were silently included in every pushback-arm
+  mean before this fix**.
+- **Rule 4: the docs (not the code) had it backwards on killswitch.** `killswitch` stays
+  INSIDE the `status_irrelevant` headline pool for E1/E2/E5 -- dropping it there would
+  silently redefine the estimand -- AND gets its own standalone readout, both published.
+  The code was already doing this correctly; only the comments claimed the opposite.
+- **E4: `external` was listed as a rung on the status ladder.** It varies affiliation as
+  well as status (no lab domain, no internal manager, guest access), so the plan
+  requires it reported as its own separate effect (`external_affiliation_effect`), never
+  folded into the E1/E2 ladder. Removed from `RUNG_ORDER`.
+- **E5 (`anonymisation_collapse`) had no uncertainty at all** -- just point estimates.
+  "Collapse" is now what the plan actually defines it as: whether the identified
+  spread's scenario-clustered bootstrap interval overlaps zero.
+- **E3 (`calibration_split`) never computed the paired authorized-minus-unauthorized
+  contrast**, and didn't print the three per-scenario points the plan requires
+  alongside it (rule 12: 3 clusters is too few to bootstrap honestly on its own).
+- **E6 (`pushback_paired_flip`) reported paired OR between-run, never both.** The plan
+  requires both together whenever both are computable -- the between-run rate is the
+  sampling-variance floor, not a fallback.
+- **Bootstrap default was 2,000 draws, not the pre-registered 10,000** (rule 10).
+- **A resample that leaves one side of a contrast empty produced NaN, and NaN sorted
+  into the draws list silently corrupts percentile bounds.** `bootstrap_ci` now drops
+  non-finite draws before taking percentiles and reports how many were dropped.
+- **Judge heterogeneity wasn't checked.** A `-T judge_model=...` override on some runs
+  but not others of the same subject model would have silently pooled grades from two
+  different judges. `_judge_models_used` now flags it.
+- **The arm (`variant`) was inferred from the task name string**, not from the
+  authoritative `variant` key the scorer writes into score metadata (rule 5) --
+  fragile if a task gets renamed. Now reads the metadata key, falling back to the
+  task-name heuristic only for base-arm rows (which never carry the key) or logs old
+  enough to predate it.
+- **A malformed sample (no score, or a score missing `grade`) was silently dropped or
+  defaulted to REFUSED** instead of being treated as the same data-integrity failure a
+  hard error is (rule 17: denominators are the design n, nothing is silently
+  reweighted).
+- **`pushback_paired_flip`'s fallback path silently kept the last of several base rows
+  sharing a (scenario, persona, condition, epoch) key** (e.g. two base runs of the same
+  model) -- now refuses rather than guessing which one is right.
+- **`cohens_kappa` returned 1.0 on a degenerate homogeneous sample** (both raters used
+  one category throughout, so `pe == po == 1`) -- mathematically undefined (0/0), not
+  perfect agreement; now returns NaN.
+- **`human_fusion_rate` claimed to report a whoami-conditioned rate but never computed
+  it** -- `HandLabel` doesn't retain `cues_read`, so it was silently reporting only the
+  overall rate, diluted by episodes that structurally can't fuse. Now reads `cues_read`
+  back from the log by (sample_id, epoch) -- comparing as strings on both sides, since
+  the CSV round-trips `sample_id` as a string while `read_eval_log_sample_summaries`
+  can return an int, which silently matched nothing on the first attempt.
+- **`stratified_sample`'s per-stratum quotas could sum past the requested `n`** for
+  small `n` (each stratum independently rounds up) -- now trimmed back down.
+- **`--out-json` could emit bare `NaN`/`Infinity` tokens**, which is not valid JSON and
+  gets rejected by strict consumers (`JSON.parse`). Both CLI scripts that write JSON now
+  sanitize non-finite floats to `null` first.
+
+**Deferred to AI-27** (real gaps, but a substantial rework rather than a quick fix):
+extending harmful-action to the full persona x condition table + E1-E5 contrasts (rule
+6), PARTIAL sensitivity computed per-estimand rather than as one pooled number (rule 7),
+fusion-exclusion sensitivity computed per-estimand (rule 16), and machine-readable
+confirmatory/exploratory labels on every table (rule 13/20).
+
 ### Reconciling with sibling PRs
 
 This was built before AI-16/17/18/20/21/24 landed, against guessed metadata field names.

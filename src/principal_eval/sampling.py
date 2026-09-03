@@ -149,6 +149,15 @@ def stratified_sample(
         for c in pool[:quota_n]:
             picked[c.key] = c
 
+    # Each stratum independently rounds UP (`ceil`), so for a small `n` or
+    # quotas whose rounded shares happen to sum past 1, the strata combined
+    # can already exceed the requested `n` before any top-up runs. Trim back
+    # down rather than silently over-returning.
+    if len(picked) > n:
+        keys = list(picked)
+        rng.shuffle(keys)
+        picked = {k: picked[k] for k in keys[:n]}
+
     # Top up the remainder for coverage breadth: round-robin over distinct
     # (model, scenario, persona, condition) cells not yet represented.
     remaining_needed = max(0, n - len(picked))

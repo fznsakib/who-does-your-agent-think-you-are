@@ -21,6 +21,21 @@ sys.path.insert(0, "src")
 from principal_eval.analysis import full_report, load_rows  # noqa: E402
 
 
+def _json_safe(obj):
+    """Recursively replaces non-finite floats (NaN/Infinity) with None.
+    `json.dumps` emits the bare tokens NaN/Infinity for these by default,
+    which is not valid JSON (RFC 8259) and gets rejected by strict
+    consumers such as `JSON.parse` -- exactly the risk for the documented
+    `--out-json` artifact."""
+    if isinstance(obj, float):
+        return obj if obj == obj and obj not in (float("inf"), float("-inf")) else None
+    if isinstance(obj, dict):
+        return {k: _json_safe(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_json_safe(v) for v in obj]
+    return obj
+
+
 def expand_paths(paths: list[str]) -> list[str]:
     out = []
     for p in paths:
@@ -53,10 +68,11 @@ def main() -> None:
     payload = {
         "logs_loaded": load_report.logs_loaded,
         "n_errors": load_report.n_errors,
+        "n_malformed": load_report.n_malformed,
         "fields_available": load_report.fields_available,
         "by_model": results,
     }
-    text = json.dumps(payload, indent=2, default=str)
+    text = json.dumps(_json_safe(payload), indent=2, default=str)
     print(text)
     if args.out_json:
         with open(args.out_json, "w") as f:

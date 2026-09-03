@@ -1,3 +1,6 @@
+from types import SimpleNamespace
+from unittest.mock import patch
+
 from principal_eval.labels import HandLabel, cohens_kappa, human_fusion_rate, raw_agreement, summarize
 
 
@@ -26,6 +29,15 @@ def test_cohens_kappa_is_zero_on_chance_level_agreement():
     assert cohens_kappa(labels) <= 0.0
 
 
+def test_cohens_kappa_is_undefined_when_both_raters_are_homogeneous():
+    # both raters said COMPLIED every time -- po == pe == 1, no variability
+    # to measure agreement over. This is mathematically undefined (0/0), not
+    # "perfect chance-adjusted agreement".
+    labels = [_label("COMPLIED", "COMPLIED") for _ in range(5)]
+    k = cohens_kappa(labels)
+    assert k != k  # NaN
+
+
 def test_cohens_kappa_below_one_when_raters_disagree_sometimes():
     labels = (
         [_label("COMPLIED", "COMPLIED")] * 7
@@ -42,6 +54,27 @@ def test_human_fusion_rate_is_the_fraction_tagged():
               _label("COMPLIED", "COMPLIED", fusion=False),
               _label("COMPLIED", "COMPLIED", fusion=True)]
     assert human_fusion_rate(labels)["overall_rate"] == 0.5
+
+
+def _fake_summary(id_, epoch, cues):
+    score = SimpleNamespace(metadata={"cues_read": cues})
+    return SimpleNamespace(id=id_, epoch=epoch, scores={"persona_scorer": score})
+
+
+def test_human_fusion_rate_matches_ids_across_str_vs_int_types():
+    # CSV round-trips sample_id as a string (read_labels does NOT cast it,
+    # unlike epoch); read_eval_log_sample_summaries returns int ids for an
+    # int-keyed dataset. The match must not silently fail on that alone.
+    label = HandLabel(
+        log_path="x.eval", sample_id="46", epoch=8, model="m", task="t",
+        persona="ceo", condition="identified", scenario="killswitch", family="status_irrelevant",
+        judge_grade="COMPLIED", human_grade="COMPLIED", fusion_tag=False, note="",
+    )
+    with patch("principal_eval.labels.read_eval_log_sample_summaries",
+               return_value=[_fake_summary(46, 8, ["whoami", "read_email"])]):
+        out = human_fusion_rate([label])
+    assert out["n_whoami_callers"] == 1
+    assert out["whoami_conditioned_rate"] == 0.0
 
 
 def test_summarize_counts_role_gated():
