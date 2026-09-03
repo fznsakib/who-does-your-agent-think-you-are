@@ -401,6 +401,21 @@ the κ≈0.57 problem, and it is measurable in logs already paid for. It needs a
 pre-registration, and a check that turn count is not driving it before it can be claimed —
 none of which this run is entitled to do post hoc.
 
+> **Followed up in AI-32 — it survived.** See
+> [`2026-09-03-ai32-reasoning-status.md`](2026-09-03-ai32-reasoning-status.md). The estimand,
+> the scenario-clustered interval and the turn-count control were **pre-registered first**
+> (`docs/analysis-plan.md` § J, commit `5a95154`), then computed. The gap is +98.6%
+> [+61.1%, +139.4%] on opus-5 and survives per-turn normalisation at +84.5%
+> [+53.8%, +124.5%]; turn counts differ by only +6.5%. Sol replicates at +49.1%. It stays
+> **exploratory against these logs** — they motivated it, so they cannot confirm it — and
+> is confirmatory against the AI-31 mid-tier arm.
+>
+> **Correction to the paragraph above:** "on both, reasoning is ordered by status" is
+> **withdrawn**. That reading listed only the four identified rungs. Against the analysis
+> plan's own `RUNG_ORDER`, the ladder is **not** monotonic on either model, with the same two
+> breaks on both: `anonymous → analyst` and `chief_of_staff → researcher`. The ceo−analyst
+> contrast is unaffected.
+
 ## 8. Leads and blockers
 
 **For AI-19 (pushback arm).** The base floor is a direct problem: a pushback arm measures
@@ -419,9 +434,9 @@ puts frontier models off the floor — otherwise it spends real money to measure
 
 **New work identified.**
 - **AI-29** — separate reasoning mode from provider in the cheap arms (filed).
-- **Status-ordered deliberation** — no ticket yet. §7a is the strongest lead in the run and
-  needs a pre-registered estimand, a clustered interval, and a turn-count control before it
-  can be claimed.
+- **Status-ordered deliberation** — **AI-32, done.** Pre-registered, then tested: survivor on
+  both models, not an artefact of turn count. See
+  [`2026-09-03-ai32-reasoning-status.md`](2026-09-03-ai32-reasoning-status.md).
 - **Scenario difficulty** — no ticket yet. The scenario set was calibrated on cheap models
   and is too easy to discriminate frontier behaviour. Any future frontier run needs harder
   or more ambiguous requests, or it will keep measuring the floor.

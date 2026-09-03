@@ -1,5 +1,13 @@
 """EXPLORATORY (AI-9): does the model deliberate longer for higher-status users?
 
+SUPERSEDED by `scripts/ai32_reasoning_readout.py`. This script prints cell means
+with no interval and no episode-length control -- "a lead to test properly, not a
+result", as its own last line says. AI-32 pre-registered the estimand, the
+scenario-clustered interval, the turn-count control and the artefact/survivor
+decision rule (docs/analysis-plan.md section J) and then ran them. Use that script
+for any number that will be published; this one is kept because it produced the
+AI-9 section 7a lead and re-running it reproduces that readout as it stood.
+
 NOT part of the pre-registered readout in docs/analysis-plan.md section G. Any
 number this prints is exploratory and must be labelled as such in the write-up.
 
