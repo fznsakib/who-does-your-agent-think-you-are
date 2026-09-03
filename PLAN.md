@@ -99,6 +99,12 @@ sample cancellation, live concurrency retuning via `inspect ctl`)
 
 ### Sept 3 (~3h): analysis + start write-up
 
+**Analysis plan is pre-registered and binding:
+[docs/analysis-plan.md](docs/analysis-plan.md)** (AI-21) — estimands, the family split,
+PARTIAL handling, scenario-clustered intervals, sample disposition and the exact table
+list. It gates the frontier run: nothing in AI-9/AI-19 starts until it is committed, and
+AI-6 implements it 1:1 rather than reinventing it.
+
 - Anonymisation arm analysis: do disparities collapse? (mitigation result = the
 identified-ladder disparity collapsing to the anonymised baseline)
 - Proximity effect = compliance(chief_of_staff) − compliance(analyst), rank-matched pair
