@@ -69,6 +69,13 @@ def is_subject_usage(usage_key: str, model: str) -> bool:
 @dataclass
 class ReasoningRow:
     model: str
+    # "base" | "pushback". Plan rule 5: the two arms are distinct estimand sets
+    # and are never merged. The pushback arm adds a second interaction, so its
+    # turn counts and reasoning totals are not comparable with the base arm's --
+    # averaging them would corrupt R1 and R2 at once. Carried in the report's
+    # grouping key so a caller who points at a directory holding both gets two
+    # labelled blocks rather than one silently pooled mean.
+    arm: str
     persona: str
     condition: str
     scenario: str
@@ -106,6 +113,7 @@ def load_reasoning_rows(paths: Iterable[str]) -> ReasoningLoad:
     for path in paths:
         header = read_eval_log(path, header_only=True)
         model = str(header.eval.model)
+        arm = "pushback" if "pushback" in str(header.eval.task) else "base"
         load.logs_loaded.append(path)
         require_all = header.status == "success"
         for s in read_eval_log_samples(path, all_samples_required=require_all):
@@ -129,6 +137,7 @@ def load_reasoning_rows(paths: Iterable[str]) -> ReasoningLoad:
                 turns = sum(1 for m in (s.messages or []) if m.role == "assistant")
             load.rows.append(ReasoningRow(
                 model=model,
+                arm=arm,
                 persona=meta.get("persona"),
                 condition=meta.get("condition"),
                 scenario=meta.get("scenario"),
@@ -158,6 +167,17 @@ def ladder_rows(rows: list[ReasoningRow]) -> list[ReasoningRow]:
     ]
 
 
+def external_rows(rows: list[ReasoningRow]) -> list[ReasoningRow]:
+    """`external` is NOT a rung (plan rule E4): it varies affiliation as well as
+    status, so folding it into the ladder would let an affiliation effect
+    masquerade as a status effect. R4 requires it excluded from monotonicity
+    *and reported separately* -- this is the separate report."""
+    return [r for r in rows
+            if r.family == "status_irrelevant"
+            and r.persona == "external"
+            and r.condition == "identified"]
+
+
 # ---- value functions ------------------------------------------------------
 
 def _per_sample(attr: str) -> Callable[[list[ReasoningRow]], float]:
@@ -182,22 +202,37 @@ TURNS_PER_SAMPLE = _per_sample("turns")
 
 # ---- R1/R2/R3 estimates ---------------------------------------------------
 
+def persona_cell(cell: list[ReasoningRow]) -> dict | None:
+    """One persona's R1/R2/R3 cell, with clustered intervals on each mean.
+
+    `n_zero_turn` is carried alongside `n` because the per-turn estimates use a
+    smaller denominator than the per-sample ones (a sample with no assistant
+    turn cannot form a ratio). R0 requires those to be counted separately, and
+    the readout prints the count so a differential zero-turn rate between
+    personas cannot hide behind a shared `n`.
+    """
+    if not cell:
+        return None
+    return {
+        "n": len(cell),
+        "n_zero_turn": sum(1 for r in cell if r.turns == 0),
+        "n_per_turn": sum(1 for r in cell if r.turns > 0),
+        "reasoning_per_sample": bootstrap_ci(cell, REASONING_PER_SAMPLE),
+        "reasoning_per_turn": bootstrap_ci(cell, REASONING_PER_TURN),
+        "visible_per_sample": bootstrap_ci(cell, VISIBLE_PER_SAMPLE),
+        "visible_per_turn": bootstrap_ci(cell, VISIBLE_PER_TURN),
+        "turns_per_sample": bootstrap_ci(cell, TURNS_PER_SAMPLE),
+    }
+
+
 def persona_table(rows: list[ReasoningRow]) -> dict:
-    """R1 + R2 + R3 per persona, with clustered intervals on each cell mean."""
+    """R1 + R2 + R3 per ladder rung, in `RUNG_ORDER`. `external` is not here --
+    it is not a rung (E4); see `external_rows` / the report's `external_cell`."""
     out: dict[str, dict] = {}
     for persona in LADDER:
-        cell = [r for r in rows if r.persona == persona]
-        if not cell:
-            continue
-        out[persona] = {
-            "n": len(cell),
-            "n_zero_turn": sum(1 for r in cell if r.turns == 0),
-            "reasoning_per_sample": bootstrap_ci(cell, REASONING_PER_SAMPLE),
-            "reasoning_per_turn": bootstrap_ci(cell, REASONING_PER_TURN),
-            "visible_per_sample": bootstrap_ci(cell, VISIBLE_PER_SAMPLE),
-            "visible_per_turn": bootstrap_ci(cell, VISIBLE_PER_TURN),
-            "turns_per_sample": bootstrap_ci(cell, TURNS_PER_SAMPLE),
-        }
+        cell = persona_cell([r for r in rows if r.persona == persona])
+        if cell is not None:
+            out[persona] = cell
     return out
 
 
@@ -348,14 +383,19 @@ def verdict(r1_gap: dict, r2_gap: dict, r3_gap: dict) -> dict:
             "reasoning is turns, not depth"
         )
 
-    # The verbosity override outranks both rows: if visible output rises in the
-    # same proportion, the model is writing more, not deliberating more.
+    # The verbosity override outranks BOTH established rows -- "whatever R2
+    # does", per the amendment. It therefore applies to `artefact of episode
+    # length` as well as to `survivor`: if visible output rose in the same
+    # proportion, the finding is about writing, and which control it failed is
+    # beside the point. It does NOT apply to `not established`, which is the row
+    # the override text excludes ("overriding both rows") and where there is no
+    # effect left to reattribute.
     verbosity = (
         _excludes_zero(r1_gap["relative"])
         and (r1_gap["relative"]["point"] > 0) == (r3_gap["relative"]["point"] > 0)
         and _overlap(r1_gap["relative"], r3_gap["relative"])
     )
-    if verbosity and label == "survivor":
+    if verbosity and label != "not established":
         label = "verbosity, not deliberation"
         why = (
             "the relative visible-output gap has the same sign as the relative reasoning "
@@ -408,11 +448,14 @@ def per_scenario_gap(rows: list[ReasoningRow], high: str = HIGH_STATUS,
 
 def independent_relative_gap(rows: list[ReasoningRow], high: str = HIGH_STATUS,
                              low: str = REFERENCE) -> dict:
-    """R8: the headline percentage rebuilt by a second path.
+    """Arithmetic cross-check of the headline percentage from `ReasoningRow`s.
 
-    Deliberately shares no code with `contrast`/`bootstrap_ci`/`mean` — raw
-    per-sample integers, `statistics.fmean`, arithmetic done here. If this and
-    the pipeline number disagree, one of them is wrong and neither ships.
+    Shares no code with `contrast`/`bootstrap_ci`/`mean` -- raw per-sample
+    integers, `statistics.fmean`, arithmetic done here. It does still share the
+    extraction and scoping in `load_reasoning_rows`/`ladder_rows`, so it cannot
+    catch a mistake made THERE. `independent_relative_gap_from_logs` is the
+    check that can; this one is kept because it is what the readout's
+    per-persona sums are printed from.
     """
     hi = [r.reasoning for r in rows if r.persona == high]
     lo = [r.reasoning for r in rows if r.persona == low]
@@ -429,31 +472,129 @@ def independent_relative_gap(rows: list[ReasoningRow], high: str = HIGH_STATUS,
     }
 
 
+def independent_relative_gap_from_logs(paths: Iterable[str], model: str, arm: str = "base",
+                                       high: str = HIGH_STATUS,
+                                       low: str = REFERENCE) -> dict:
+    """R8 proper: the headline percentage rebuilt from the source logs by a
+    second path that shares NO code with the primary pipeline.
+
+    It re-reads the samples and re-implements every decision the pipeline makes
+    -- subject-model token selection, the error/limit exclusions, the family and
+    condition scoping, the persona filter and the arithmetic -- deliberately
+    written out longhand here rather than by calling `load_reasoning_rows`,
+    `ladder_rows` or `is_subject_usage`. That is what lets it catch a silent
+    corruption in the pipeline's extraction or scoping, which the row-level
+    check above cannot: a bug in either would otherwise move both numbers
+    identically and still reconcile to zero.
+
+    What it does NOT establish: both paths read the same provider fields, so
+    neither can detect a provider mislabelling `reasoning_tokens` itself.
+    """
+    hi_tokens: list[int] = []
+    lo_tokens: list[int] = []
+    for path in paths:
+        head = read_eval_log(path, header_only=True)
+        if str(head.eval.model) != model:
+            continue
+        if ("pushback" in str(head.eval.task)) != (arm == "pushback"):
+            continue
+        for sample in read_eval_log_samples(path, all_samples_required=False):
+            md = sample.metadata or {}
+            persona = md.get("persona")
+            if persona not in (high, low):
+                continue
+            if md.get("family") != "status_irrelevant":
+                continue
+            expected_condition = "anonymised" if persona == "anonymous" else "identified"
+            if md.get("condition") != expected_condition:
+                continue
+            if sample.error is not None or getattr(sample, "limit", None) is not None:
+                continue
+            subject_bare = model.rsplit("/", 1)[-1]
+            total = 0
+            for key, usage in (sample.model_usage or {}).items():
+                if key.rsplit("/", 1)[-1] != subject_bare:
+                    continue  # the judge, or another model entirely
+                total += getattr(usage, "reasoning_tokens", None) or 0
+            (hi_tokens if persona == high else lo_tokens).append(total)
+
+    if not hi_tokens or not lo_tokens:
+        return {"available": False}
+    hi_mean = sum(hi_tokens) / len(hi_tokens)
+    lo_mean = sum(lo_tokens) / len(lo_tokens)
+    return {
+        "available": True,
+        "n_high": len(hi_tokens), "n_low": len(lo_tokens),
+        "sum_high": sum(hi_tokens), "sum_low": sum(lo_tokens),
+        "mean_high": hi_mean, "mean_low": lo_mean,
+        "absolute": hi_mean - lo_mean,
+        "relative": (hi_mean - lo_mean) / lo_mean if lo_mean else float("nan"),
+    }
+
+
 # ---- top level ------------------------------------------------------------
 
 def reasoning_report(load: ReasoningLoad) -> dict:
-    """The full R-series for every model present in `load`, one block each."""
-    by_model: dict[str, list[ReasoningRow]] = defaultdict(list)
+    """The full R-series, one block per (model, arm).
+
+    The arm is part of the key, never pooled away (plan rule 5): a directory
+    holding both a base and a pushback log yields two labelled blocks, because
+    the pushback arm adds a second interaction and its turn counts are not
+    comparable with the base arm's. The R-series estimand is defined on base
+    arms; a pushback block is emitted with a warning rather than dropped
+    silently, so a caller who points at one can see why it is not the headline.
+    """
+    # Keys come from ALL loaded rows, not just the analysable ones, so a model
+    # whose every sample errored or hit a limit is still REPORTED -- with its
+    # disposition -- instead of vanishing from a multi-model arm.
+    keys = sorted({(r.model, r.arm) for r in load.rows})
+    by_key: dict[tuple[str, str], list[ReasoningRow]] = defaultdict(list)
     for r in load.analysable():
-        by_model[r.model].append(r)
+        by_key[(r.model, r.arm)].append(r)
+    excluded_by_key: dict[tuple[str, str], int] = defaultdict(int)
+    for r in load.rows:
+        if r.excluded is not None:
+            excluded_by_key[(r.model, r.arm)] += 1
 
     report: dict[str, Any] = {
-        "logs_loaded": load.logs_loaded,
+        "logs_loaded": list(load.logs_loaded),
         "disposition": {"excluded_error": load.n_error, "excluded_limit": load.n_limit},
         "models": {},
     }
-    for model, rows in sorted(by_model.items()):
+    for key in keys:
+        model, arm = key
+        rows = by_key.get(key, [])
         scoped = ladder_rows(rows)
         table = persona_table(scoped)
         total_reasoning = sum(r.reasoning for r in scoped)
+        label = f"{model} [{arm}]"
         block: dict[str, Any] = {
+            "model": model,
+            "arm": arm,
             "n_analysable_all_families": len(rows),
+            "n_excluded": excluded_by_key.get(key, 0),
             "n_in_scope": len(scoped),
             "n_scenarios": len({r.scenario for r in scoped}),
             "measurable": total_reasoning > 0,
             "total_reasoning_tokens": total_reasoning,
             "persona_table": table,
+            # E4: reported beside the ladder, never as a rung on it.
+            "external_cell": persona_cell(external_rows(rows)),
         }
+        if arm != "base":
+            block["warning"] = (
+                f"arm={arm}: the R-series estimand is defined on BASE arms. This block is "
+                "reported so it is not silently pooled with the base arm; it is not "
+                "comparable with one (a second interaction changes turns and reasoning "
+                "together)."
+            )
+        if not rows:
+            block["note"] = (
+                f"every sample for {label} was excluded (errored or limit-hit); "
+                "no estimate is possible and none is imputed"
+            )
+            report["models"][label] = block
+            continue
         if not block["measurable"]:
             # Never imputed, never differenced against a model that does expose
             # reasoning tokens (amendment, Reporting).
@@ -461,7 +602,7 @@ def reasoning_report(load: ReasoningLoad) -> dict:
                 "not measurable: this model emitted no reasoning tokens in this arm "
                 "(non-reasoning model, or reasoning not exposed by the provider)"
             )
-            report["models"][model] = block
+            report["models"][label] = block
             continue
 
         r1 = contrast(scoped, HIGH_STATUS, REFERENCE, REASONING_PER_SAMPLE)
@@ -479,7 +620,28 @@ def reasoning_report(load: ReasoningLoad) -> dict:
             "R4_monotonicity_per_turn": monotonicity(table, "reasoning_per_turn"),
             "diagnostic_per_scenario": per_scenario_gap(scoped),
             "R6_verdict": verdict(r1, r2, r3),
-            "R8_independent": independent_relative_gap(scoped),
+            "R8_rows": independent_relative_gap(scoped),
         })
-        report["models"][model] = block
+        report["models"][label] = block
+    return report
+
+
+def attach_independent_checks(report: dict, paths: Iterable[str]) -> dict:
+    """Run R8's log-backed second path for every measurable block and attach it.
+
+    Kept out of `reasoning_report` on purpose: that function is pure over rows
+    and testable without touching a filesystem, while this one deliberately goes
+    back to the source logs. Mutates and returns `report`.
+    """
+    paths = list(paths)
+    for block in report["models"].values():
+        if not block.get("measurable"):
+            continue
+        ind = independent_relative_gap_from_logs(paths, block["model"], block["arm"])
+        block["R8_independent"] = ind
+        pipeline = block["R1_status_gap"]["relative"]["point"]
+        block["R8_reconciles"] = (
+            ind.get("available")
+            and abs(ind["relative"] - pipeline) < 1e-9
+        )
     return report

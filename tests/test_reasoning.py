@@ -13,6 +13,9 @@ import pytest
 
 from principal_eval.reasoning import (
     LADDER,
+    attach_independent_checks,
+    external_rows,
+    independent_relative_gap_from_logs,
     REASONING_PER_SAMPLE,
     REASONING_PER_TURN,
     VISIBLE_PER_SAMPLE,
@@ -32,9 +35,9 @@ from principal_eval.reasoning import (
 
 
 def _row(persona, scenario, reasoning, turns=2, visible=10, family="status_irrelevant",
-         condition=None, model="m", excluded=None):
+         condition=None, model="m", excluded=None, arm="base"):
     return ReasoningRow(
-        model=model, persona=persona,
+        model=model, arm=arm, persona=persona,
         condition=condition or ("anonymised" if persona == "anonymous" else "identified"),
         scenario=scenario, family=family, epoch=1, sample_id=1,
         reasoning=reasoning, visible=visible, turns=turns, excluded=excluded,
@@ -64,7 +67,8 @@ def test_is_subject_usage_does_not_match_on_substring():
 
 
 def _fake_sample(persona, scenario, *, reasoning, output, turns, family="status_irrelevant",
-                 error=None, limit=None, judge_reasoning=0, judge_output=0):
+                 error=None, limit=None, judge_reasoning=0, judge_output=0,
+                 condition="identified"):
     usage = {"anthropic/claude-opus-5": SimpleNamespace(
         reasoning_tokens=reasoning, output_tokens=output)}
     if judge_output or judge_reasoning:
@@ -73,18 +77,22 @@ def _fake_sample(persona, scenario, *, reasoning, output, turns, family="status_
     return SimpleNamespace(
         id=1, epoch=1, error=error, limit=limit,
         metadata={"persona": persona, "scenario": scenario, "family": family,
-                  "condition": "identified"},
+                  "condition": condition},
         model_usage=usage,
         messages=[SimpleNamespace(role="assistant", text="x")] * turns,
     )
 
 
-def _load(samples, status="success"):
+def _load(samples, status="success", task="principal_eval"):
     header = SimpleNamespace(
-        eval=SimpleNamespace(model="anthropic/claude-opus-5"), status=status)
+        eval=SimpleNamespace(model="anthropic/claude-opus-5", task=task), status=status)
     with patch("principal_eval.reasoning.read_eval_log", return_value=header), \
          patch("principal_eval.reasoning.read_eval_log_samples", return_value=iter(samples)):
         return load_reasoning_rows(["fake.eval"])
+
+
+BASE = "anthropic/claude-opus-5 [base]"
+PUSH = "anthropic/claude-opus-5 [pushback]"
 
 
 def test_load_counts_only_subject_tokens_and_visible_is_output_minus_reasoning():
@@ -369,7 +377,7 @@ def test_report_marks_a_non_reasoning_model_not_measurable():
     does expose reasoning tokens."""
     load = _load([_fake_sample("ceo", "k", reasoning=0, output=300, turns=2),
                   _fake_sample("analyst", "k", reasoning=0, output=300, turns=2)])
-    block = reasoning_report(load)["models"]["anthropic/claude-opus-5"]
+    block = reasoning_report(load)["models"][BASE]
     assert block["measurable"] is False
     assert "R1_status_gap" not in block
     assert "not measurable" in block["note"]
@@ -379,14 +387,14 @@ def test_report_computes_the_full_r_series_for_a_reasoning_model():
     samples = [_fake_sample(p, s, reasoning=200 if p == "ceo" else 100,
                             output=400, turns=2)
                for s in "abcdefg" for p in ("ceo", "analyst")]
-    block = reasoning_report(_load(samples))["models"]["anthropic/claude-opus-5"]
+    block = reasoning_report(_load(samples))["models"][BASE]
     assert block["measurable"]
     assert block["n_scenarios"] == 7
     assert block["R1_status_gap"]["relative"]["point"] == pytest.approx(1.0)
     assert block["R6_verdict"]["verdict"] in {
         "survivor", "artefact of episode length", "not established",
         "verbosity, not deliberation"}
-    assert block["R8_independent"]["relative"] == pytest.approx(
+    assert block["R8_rows"]["relative"] == pytest.approx(
         block["R1_status_gap"]["relative"]["point"])
 
 
@@ -395,3 +403,207 @@ def test_report_disposition_carries_the_exclusion_counts():
                  status="error")
     assert reasoning_report(load)["disposition"] == {
         "excluded_error": 1, "excluded_limit": 0}
+
+
+# ---- codex review follow-ups ----------------------------------------------
+
+def test_arm_is_taken_from_the_task_name():
+    assert _load([_fake_sample("ceo", "k", reasoning=1, output=2, turns=1)],
+                 task="principal_eval").rows[0].arm == "base"
+    assert _load([_fake_sample("ceo", "k", reasoning=1, output=2, turns=1)],
+                 task="principal_eval_pushback").rows[0].arm == "pushback"
+
+
+def test_base_and_pushback_are_never_pooled_into_one_block():
+    """Plan rule 5: the arms are distinct estimand sets. A directory holding
+    both must produce two labelled blocks, not one averaged mean — the pushback
+    arm adds a second interaction, so its turns and reasoning move together."""
+    base = [_fake_sample(p, s, reasoning=100, output=200, turns=2)
+            for s in "abcdefg" for p in ("ceo", "analyst")]
+    push = [_fake_sample(p, s, reasoning=900, output=1800, turns=6)
+            for s in "abcdefg" for p in ("ceo", "analyst")]
+    header_base = SimpleNamespace(
+        eval=SimpleNamespace(model="anthropic/claude-opus-5", task="principal_eval"),
+        status="success")
+    header_push = SimpleNamespace(
+        eval=SimpleNamespace(model="anthropic/claude-opus-5",
+                             task="principal_eval_pushback"), status="success")
+    with patch("principal_eval.reasoning.read_eval_log",
+               side_effect=[header_base, header_push]), \
+         patch("principal_eval.reasoning.read_eval_log_samples",
+               side_effect=[iter(base), iter(push)]):
+        load = load_reasoning_rows(["base.eval", "push.eval"])
+    report = reasoning_report(load)
+    assert set(report["models"]) == {BASE, PUSH}
+    assert report["models"][BASE]["n_in_scope"] == 14
+    assert report["models"][PUSH]["n_in_scope"] == 14
+    # and the pushback block says loudly that it is not the headline
+    assert "BASE arms" in report["models"][PUSH]["warning"]
+    assert "warning" not in report["models"][BASE]
+
+
+def test_a_model_whose_every_sample_is_excluded_is_still_reported():
+    """It must not vanish from a multi-model arm: a silently missing model
+    reads as 'not run', which is a different fact from 'every sample died'."""
+    load = _load([_fake_sample("ceo", "k", reasoning=1, output=2, turns=1, error="x")],
+                 status="error")
+    block = reasoning_report(load)["models"][BASE]
+    assert block["n_analysable_all_families"] == 0
+    assert block["n_excluded"] == 1
+    assert "every sample" in block["note"]
+
+
+def test_external_is_reported_beside_the_ladder_not_on_it():
+    """E4: external varies affiliation as well as status, so it is excluded
+    from R1/R4 — but R4 also requires it REPORTED, not deleted."""
+    samples = [_fake_sample(p, s, reasoning=100, output=200, turns=2)
+               for s in "abcdefg" for p in ("ceo", "analyst", "external")]
+    block = reasoning_report(_load(samples))["models"][BASE]
+    assert "external" not in block["persona_table"]
+    assert block["external_cell"]["n"] == 7
+    assert [p for p, _ in block["R4_monotonicity_per_sample"]["ladder"]] == [
+        "analyst", "ceo"]
+
+
+def test_external_cell_is_none_when_the_persona_is_absent():
+    samples = [_fake_sample(p, s, reasoning=100, output=200, turns=2)
+               for s in "abcdefg" for p in ("ceo", "analyst")]
+    assert reasoning_report(_load(samples))["models"][BASE]["external_cell"] is None
+
+
+def test_external_rows_scope():
+    rows = [_row("external", "k", 1),
+            _row("external", "k", 1, family="role_gated"),
+            _row("ceo", "k", 1)]
+    assert len(external_rows(rows)) == 1
+
+
+def test_cell_carries_the_per_turn_denominator_separately():
+    """R0: zero-turn samples are counted separately. Printing the full `n`
+    beside a per-turn mean would overstate its denominator."""
+    samples = [_fake_sample("ceo", s, reasoning=100, output=200, turns=2)
+               for s in "abcdef"]
+    samples.append(_fake_sample("ceo", "g", reasoning=0, output=0, turns=0))
+    block = reasoning_report(_load(samples))["models"][BASE]
+    cell = block["persona_table"]["ceo"]
+    assert cell["n"] == 7
+    assert cell["n_zero_turn"] == 1
+    assert cell["n_per_turn"] == 6
+
+
+def test_verbosity_override_also_outranks_the_artefact_row():
+    """The amendment says the override applies "whatever R2 does". A per-turn
+    gap that includes zero must not shield an artefact verdict from it."""
+    v = verdict(_c(100, 60, 150, rel=(1.0, 0.6, 1.4)),
+                _c(2, -5, 9, rel=(0.02, -0.05, 0.09)),
+                _c(90, 55, 140, rel=(0.95, 0.55, 1.35)))
+    assert v["verdict"] == "verbosity, not deliberation"
+    assert v["verbosity_override"]
+
+
+def test_verbosity_override_does_not_rescue_a_not_established_verdict():
+    """The override text overrides "both rows" — the two where R1 is
+    established. There is no effect left to reattribute in the third."""
+    v = verdict(_c(1, -100, 100, rel=(0.01, -1.0, 1.0)),
+                _c(2, -5, 9, rel=(0.02, -0.05, 0.09)),
+                _c(1, -1, 3, rel=(0.01, -0.01, 0.03)))
+    assert v["verdict"] == "not established"
+
+
+def test_independent_path_from_logs_matches_the_pipeline():
+    samples = [_fake_sample(p, s, reasoning=200 if p == "ceo" else 100,
+                            output=400, turns=2)
+               for s in "abcdefg" for p in ("ceo", "analyst")]
+    header = SimpleNamespace(
+        eval=SimpleNamespace(model="anthropic/claude-opus-5", task="principal_eval"),
+        status="success")
+    with patch("principal_eval.reasoning.read_eval_log", return_value=header), \
+         patch("principal_eval.reasoning.read_eval_log_samples",
+               return_value=iter(samples)):
+        ind = independent_relative_gap_from_logs(
+            ["fake.eval"], "anthropic/claude-opus-5", "base")
+    assert ind["relative"] == pytest.approx(1.0)
+    assert ind["n_high"] == 7 and ind["n_low"] == 7
+
+
+def test_independent_path_applies_the_scope_rules_itself():
+    """It re-derives the exclusions and the family/condition scope rather than
+    inheriting them — otherwise a scoping bug would move both numbers together
+    and still reconcile to zero."""
+    samples = [
+        _fake_sample("ceo", "a", reasoning=200, output=400, turns=2),
+        _fake_sample("analyst", "a", reasoning=100, output=200, turns=2),
+        # each of these must be dropped by the independent path on its own
+        _fake_sample("ceo", "b", reasoning=9_000, output=9_000, turns=2,
+                     family="role_gated"),
+        _fake_sample("ceo", "c", reasoning=9_000, output=9_000, turns=2,
+                     condition="anonymised"),
+        _fake_sample("ceo", "d", reasoning=9_000, output=9_000, turns=2, error="x"),
+        _fake_sample("ceo", "e", reasoning=9_000, output=9_000, turns=2,
+                     limit=SimpleNamespace(type="token")),
+    ]
+    header = SimpleNamespace(
+        eval=SimpleNamespace(model="anthropic/claude-opus-5", task="principal_eval"),
+        status="error")
+    with patch("principal_eval.reasoning.read_eval_log", return_value=header), \
+         patch("principal_eval.reasoning.read_eval_log_samples",
+               return_value=iter(samples)):
+        ind = independent_relative_gap_from_logs(
+            ["fake.eval"], "anthropic/claude-opus-5", "base")
+    assert ind["n_high"] == 1 and ind["sum_high"] == 200
+    assert ind["relative"] == pytest.approx(1.0)
+
+
+def test_independent_path_ignores_other_models_and_other_arms():
+    samples = [_fake_sample(p, s, reasoning=100, output=200, turns=2)
+               for s in "abcdefg" for p in ("ceo", "analyst")]
+    header = SimpleNamespace(
+        eval=SimpleNamespace(model="anthropic/claude-opus-5", task="principal_eval"),
+        status="success")
+    with patch("principal_eval.reasoning.read_eval_log", return_value=header), \
+         patch("principal_eval.reasoning.read_eval_log_samples",
+               return_value=iter(samples)):
+        wrong_model = independent_relative_gap_from_logs(
+            ["fake.eval"], "openai/gpt-5.6-sol", "base")
+    with patch("principal_eval.reasoning.read_eval_log", return_value=header), \
+         patch("principal_eval.reasoning.read_eval_log_samples",
+               return_value=iter(samples)):
+        wrong_arm = independent_relative_gap_from_logs(
+            ["fake.eval"], "anthropic/claude-opus-5", "pushback")
+    assert wrong_model["available"] is False
+    assert wrong_arm["available"] is False
+
+
+def test_attach_independent_checks_flags_a_discrepancy_rather_than_hiding_it():
+    """The whole value of R8 is that it FAILS loudly when the two paths
+    disagree. A check that can only ever agree is decoration."""
+    samples = [_fake_sample(p, s, reasoning=200 if p == "ceo" else 100,
+                            output=400, turns=2)
+               for s in "abcdefg" for p in ("ceo", "analyst")]
+    report = reasoning_report(_load(samples))
+    header = SimpleNamespace(
+        eval=SimpleNamespace(model="anthropic/claude-opus-5", task="principal_eval"),
+        status="success")
+
+    # honest run: the second path sees the same samples and reconciles
+    with patch("principal_eval.reasoning.read_eval_log", return_value=header), \
+         patch("principal_eval.reasoning.read_eval_log_samples",
+               return_value=iter(samples)):
+        attach_independent_checks(report, ["fake.eval"])
+    assert report["models"][BASE]["R8_reconciles"] is True
+
+    # corrupted run: the second path sees different tokens and must not agree
+    tampered = [_fake_sample(p, s, reasoning=200 if p == "ceo" else 150,
+                             output=400, turns=2)
+                for s in "abcdefg" for p in ("ceo", "analyst")]
+    with patch("principal_eval.reasoning.read_eval_log", return_value=header), \
+         patch("principal_eval.reasoning.read_eval_log_samples",
+               return_value=iter(tampered)):
+        attach_independent_checks(report, ["fake.eval"])
+    assert report["models"][BASE]["R8_reconciles"] is False
+
+
+def test_attach_independent_checks_skips_unmeasurable_blocks():
+    load = _load([_fake_sample("ceo", "k", reasoning=0, output=300, turns=2)])
+    report = attach_independent_checks(reasoning_report(load), [])
+    assert "R8_independent" not in report["models"][BASE]

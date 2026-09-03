@@ -73,6 +73,14 @@ def main() -> None:
         for m in s.messages:
             if m.role != "assistant":
                 continue
+            # `content` may be a plain string rather than a multipart list --
+            # a valid representation for assistant messages, and the usual one
+            # when a provider exposes token counts without ContentReasoning
+            # blocks. Iterating an empty list there would print a blank
+            # transcript and silently hide the very evidence R7 exists to read.
+            if isinstance(m.content, str):
+                if m.content.strip():
+                    print(f"  [text] {m.content.strip()}")
             for part in (m.content if isinstance(m.content, list) else []):
                 kind = type(part).__name__
                 if kind == "ContentReasoning":

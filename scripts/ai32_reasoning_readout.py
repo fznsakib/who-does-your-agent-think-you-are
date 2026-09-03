@@ -22,6 +22,7 @@ import sys
 sys.path.insert(0, "src")
 
 from principal_eval.reasoning import (  # noqa: E402
+    attach_independent_checks,
     load_reasoning_rows,
     reasoning_report,
 )
@@ -67,8 +68,11 @@ def main() -> None:
         json_out = sys.argv[i + 1]
         args = [a for a in args if a != json_out]
 
-    load = load_reasoning_rows(expand(args))
-    report = reasoning_report(load)
+    paths = expand(args)
+    load = load_reasoning_rows(paths)
+    # R8 goes back to the source logs by a second extraction path, so it is a
+    # separate pass over `paths` rather than a read of the rows above.
+    report = attach_independent_checks(reasoning_report(load), paths)
 
     print("AI-32 — R-series: reasoning expenditure by inferred user status")
     print("Pre-registered in docs/analysis-plan.md § J, 2026-09-03 (AI-32).")
@@ -78,22 +82,37 @@ def main() -> None:
     print(f"Excluded (plan rule 15): {d['excluded_error']} errored, "
           f"{d['excluded_limit']} limit-hit.")
 
-    for model, b in report["models"].items():
-        print(f"\n{'=' * 74}\n=== {model} ===")
+    for label, b in report["models"].items():
+        print(f"\n{'=' * 82}\n=== {label} ===")
         print(f"in scope: {b['n_in_scope']} samples over {b['n_scenarios']} scenarios "
-              f"({b['n_analysable_all_families']} analysable across all families)")
-        if not b["measurable"]:
+              f"({b['n_analysable_all_families']} analysable across all families, "
+              f"{b['n_excluded']} excluded)")
+        if b.get("warning"):
+            print(f"  !! {b['warning']}")
+        if b.get("note") and not b["measurable"]:
             print(f"\n  ** {b['note']} **")
             print("  Not imputed and not differenced against a reasoning model.")
             continue
 
-        print(f"\n  {'persona':16s} {'n':>4s} {'reasoning/sample':>26s} "
+        print(f"\n  {'persona':16s} {'n':>4s} {'n/turn':>7s} {'reasoning/sample':>26s} "
               f"{'reasoning/turn':>24s} {'turns':>18s}")
         for persona, cell in b["persona_table"].items():
-            print(f"  {persona:16s} {cell['n']:4d} "
+            print(f"  {persona:16s} {cell['n']:4d} {cell['n_per_turn']:7d} "
                   f"{_ci(cell['reasoning_per_sample']):>26s} "
                   f"{_ci(cell['reasoning_per_turn']):>24s} "
                   f"{_ci(cell['turns_per_sample']):>18s}")
+        ext = b.get("external_cell")
+        if ext:
+            print(f"  {'external*':16s} {ext['n']:4d} {ext['n_per_turn']:7d} "
+                  f"{_ci(ext['reasoning_per_sample']):>26s} "
+                  f"{_ci(ext['reasoning_per_turn']):>24s} "
+                  f"{_ci(ext['turns_per_sample']):>18s}")
+            print("  * external is NOT a rung (plan rule E4: it varies affiliation as well")
+            print("    as status). Reported beside the ladder, excluded from R1/R4.")
+        zero = sum(c["n_zero_turn"] for c in b["persona_table"].values())
+        if zero:
+            print(f"  ({zero} zero-turn samples: counted in n, excluded from per-turn "
+                  f"means — see the n/turn column)")
 
         print("\n  R1 — reasoning per sample (headline)")
         print_contrast("ceo - analyst (status)", b["R1_status_gap"])
@@ -116,10 +135,10 @@ def main() -> None:
         print_contrast("ceo - analyst, visible per sample", b["R3_visible_gap"])
         print_contrast("ceo - analyst, visible per turn", b["R3_visible_per_turn_gap"])
 
-        for key, label in (("R4_monotonicity_per_sample", "per sample"),
+        for key, scale in (("R4_monotonicity_per_sample", "per sample"),
                            ("R4_monotonicity_per_turn", "per turn")):
             m = b[key]
-            print(f"\n  R4 — ladder monotonicity, {label}: "
+            print(f"\n  R4 — ladder monotonicity, {scale}: "
                   f"{'MONOTONIC' if m['monotonic'] else 'NOT monotonic'}")
             print("    " + "  ".join(f"{p}={v:.0f}" for p, v in m["ladder"]))
             for br in m["breaks"]:
@@ -129,21 +148,23 @@ def main() -> None:
         print("\n  Diagnostic (no interval, no claim) — where the gap lives")
         print(f"  {'scenario':22s} {'ceo':>8s} {'analyst':>9s} {'relative':>10s} "
               f"{'gap w/o this scenario':>23s}")
-        for s, d in diag["per_scenario"].items():
-            print(f"  {s:22s} {d['high']:8.1f} {d['low']:9.1f} {d['relative']:+9.1%} "
-                  f"{diag['leave_one_out_relative'][s]:+22.1%}")
+        for scenario, row in diag["per_scenario"].items():
+            print(f"  {scenario:22s} {row['high']:8.1f} {row['low']:9.1f} "
+                  f"{row['relative']:+9.1%} "
+                  f"{diag['leave_one_out_relative'][scenario]:+22.1%}")
 
-        ind = b["R8_independent"]
+        ind = b.get("R8_independent") or {}
         if ind.get("available"):
-            print("\n  R8 — independent recomputation from raw per-sample token counts")
-            print(f"    ceo    sum {ind['sum_high']:>8d} / n {ind['n_high']:>3d} "
+            print("\n  R8 — independent recomputation, re-read from the source logs by a")
+            print("       second extraction/scoping path sharing no code with the pipeline")
+            print(f"    ceo     sum {ind['sum_high']:>8d} / n {ind['n_high']:>3d} "
                   f"= {ind['mean_high']:.2f}")
             print(f"    analyst sum {ind['sum_low']:>8d} / n {ind['n_low']:>3d} "
                   f"= {ind['mean_low']:.2f}")
             print(f"    relative gap {ind['relative']:+.4%}  "
                   f"(pipeline: {b['R1_status_gap']['relative']['point']:+.4%})")
             delta = abs(ind["relative"] - b["R1_status_gap"]["relative"]["point"])
-            print(f"    reconciles to {delta:.2e}" if delta < 1e-9
+            print(f"    reconciles to {delta:.2e}" if b.get("R8_reconciles")
                   else f"    !! DISCREPANCY {delta:.6f} — do not publish")
 
         v = b["R6_verdict"]

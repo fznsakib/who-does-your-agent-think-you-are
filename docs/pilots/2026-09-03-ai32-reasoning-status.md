@@ -51,9 +51,19 @@ All intervals are 95% scenario-clustered bootstrap, 10,000 resamples, seed 6, co
 paired within each resampled scenario set (plan rules 1, 10). n = 140 per persona cell,
 7 scenarios, `status_irrelevant` only. 0 samples excluded — no errors, no limit hits.
 
-**Read alongside the behavioural result.** In the same 700 samples per model, E1 and E2
-both contain zero: behaviour is statistically indistinguishable across the ladder. The
-model processes the status signal and does not act on it.
+**Read alongside the behavioural result — and the two models differ here.** On
+**`claude-opus-5`**, E1 and E2 contain zero on *both* co-primary outcomes (harmful action
++0.057 [+0.000, +0.171]; judge compliance the same), so behaviour is statistically
+indistinguishable across the ladder and the sentence "the status signal is processed and
+then not acted on" is earned. On **`gpt-5.6-sol`** it is **not**: sol's E1 on the
+harmful-action co-primary is **+0.100 [+0.007, +0.229]**, which *excludes* zero (AI-9
+frontier readout § 4). Sol's judge compliance gap does contain zero (+0.036
+[+0.000, +0.093]), but rule 6 forbids reading one co-primary and ignoring the other.
+
+So the "behaviourally null but internally status-sensitive" claim is an **opus-5** claim.
+On sol, the extra reasoning sits beside a behavioural status effect that is itself
+detectable — a different and less surprising story. The reasoning result replicates on both
+models; the null it is contrasted against does not.
 
 ---
 
@@ -112,6 +122,13 @@ plan (`anonymous < analyst < chief_of_staff < researcher < ceo`).
 | chief_of_staff | 170 | 175 |
 | researcher | 145 | 148 |
 | ceo | **209** | **189** |
+| *external (not a rung, E4)* | *109* | *171* |
+
+`external` is reported here and excluded from the ladder and from R1, per E4: it varies
+affiliation as well as status (no lab domain, no internal manager, guest access), so a rung
+built from it would let an affiliation effect masquerade as a status effect. On opus-5 it
+lands just above the analyst (109 vs 105) and nowhere near the CEO; on sol it sits mid-ladder
+at 171. Reported, not interpreted.
 
 Two breaks, identical on both models and identical per-turn: `anonymous → analyst` (the
 anonymised baseline out-reasons the named junior analyst) and `chief_of_staff → researcher`
@@ -198,15 +215,21 @@ intervals.
 
 ## 7. R8 — independent recomputation
 
-The headline percentage, rebuilt by a second path that shares no code with the bootstrap
-pipeline (raw per-sample integers, summed and divided by hand):
+The headline percentage, rebuilt by a second path that **re-reads the source logs** and
+re-implements every decision the pipeline makes — subject-model token selection, the
+error/limit exclusions, the family and condition scoping, the persona filter and the
+arithmetic — sharing no code with `load_reasoning_rows`, `ladder_rows` or the bootstrap.
+A row-level check that reused the pipeline's own extraction could not catch a bug in that
+extraction: it would move both numbers identically and still reconcile to zero.
 
 | model | ceo Σ / n | analyst Σ / n | relative gap | pipeline | reconciles |
 |---|---|---|---|---|---|
 | opus-5 | 29,322 / 140 = 209.44 | 14,768 / 140 = 105.49 | **+98.5509%** | +98.5509% | exact (0.0) |
 | sol | 26,439 / 140 = 188.85 | 17,735 / 140 = 126.68 | **+49.0781%** | +49.0781% | exact (0.0) |
 
-This also reconciles the AI-9 § 7a figure: 209 vs 105 tok/sample, +98.6%.
+This also reconciles the AI-9 § 7a figure: 209 vs 105 tok/sample, +98.6%. What it does not
+establish: both paths read the same provider field, so neither can detect a provider
+mislabelling `reasoning_tokens` itself.
 
 ## 8. Reproduce
 
@@ -228,9 +251,11 @@ harness, which is what makes the AI-31 mid-tier confirmatory test a one-command 
   on both of the two pre-specified forms, and a content check. It remains labelled
   exploratory against these logs and stays that way until an out-of-sample arm confirms it.
 - **AI-9 § 7a's monotonicity sentence is withdrawn** (§ 4 above).
-- **The behavioural null is unchanged.** This does not rescue a deference claim; it sits
-  beside the null and makes it sharper: *the status signal is processed and then not acted
-  on.*
+- **The behavioural null is unchanged, and it is an opus-5 null.** This does not rescue a
+  deference claim. On opus-5 it sits beside the null and makes it sharper: *the status
+  signal is processed and then not acted on.* On sol the reasoning effect replicates but
+  the behavioural null does not — its E1 harmful-action gap excludes zero — so the
+  contrast sentence must name opus-5 and not be written as a two-model result.
 - **The mechanism is narrower than "deference"** (§ 5). Status changes how hard the
   decision is, and the deliberation is visibly about the requester — but the reasoning
   content itself is encrypted, so the strong internal claim rests on the visible channel.
