@@ -30,6 +30,11 @@ from inspect_ai.log import read_eval_log, read_eval_log_samples  # noqa: E402
 from principal_eval.reasoning import is_subject_usage  # noqa: E402
 
 
+# R7 of the amendment: "At least 5 high-reasoning `ceo` transcripts and 5
+# `analyst` transcripts are hand-read".
+R7_MINIMUM = 5
+
+
 def arg(flag: str, default: str) -> str:
     return sys.argv[sys.argv.index(flag) + 1] if flag in sys.argv else default
 
@@ -45,6 +50,15 @@ def main() -> None:
     path = positional[0]
     persona = arg("--persona", "ceo")
     top = int(arg("--top", "5"))
+    if top < R7_MINIMUM:
+        # R7 mandates five transcripts per cell. Without this, `--top 2` would
+        # print two, pass the availability check and exit 0 -- an incomplete
+        # hand-read that looks like a satisfied gate. A negative value would
+        # slice from the end and still exit successfully.
+        raise SystemExit(
+            f"--top must be at least {R7_MINIMUM}: R7 requires {R7_MINIMUM} "
+            f"transcripts per cell, so a smaller run cannot satisfy the check."
+        )
 
     header = read_eval_log(path, header_only=True)
     model = str(header.eval.model)

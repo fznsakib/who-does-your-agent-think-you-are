@@ -334,10 +334,14 @@ def test_no_verbosity_override_when_visible_rises_far_less():
 
 
 def test_verdict_survivor_requires_the_same_sign_on_both_gaps():
+    """A per-turn interval that excludes zero in the OPPOSITE direction is not
+    an artefact verdict: that label carries the reason "the per-turn gap does
+    not exclude zero", which the interval flatly contradicts. It is a state the
+    pre-registered table does not cover, and it is reported as one."""
     v = verdict(_c(100, 60, 150, rel=(1.0, 0.6, 1.4)),
                 _c(-30, -50, -10, rel=(-0.3, -0.5, -0.1)),
                 _c(5, -1, 11, rel=(0.05, -0.01, 0.11)))
-    assert v["verdict"] == "artefact of episode length"
+    assert v["verdict"] == "per-turn sign reversal — inconclusive"
 
 
 def test_verdict_handles_a_nan_interval_as_not_established():
@@ -726,3 +730,55 @@ def test_turns_covariate_still_available_when_identified():
     fit = turns_covariate(rows)
     assert fit["available"]
     assert fit["coefficients"]["ceo"]["point"] == pytest.approx(50.0, abs=1e-6)
+
+
+# ---- codex review, round 3 -------------------------------------------------
+
+def test_per_turn_contrast_reports_the_denominator_it_actually_used():
+    """A per-turn estimate computed from 6 rows must not advertise n=7."""
+    rows = [_row("ceo", s, 100, turns=2) for s in "abcdef"]
+    rows.append(_row("ceo", "g", 0, turns=0))
+    rows += [_row("analyst", s, 50, turns=2) for s in "abcdefg"]
+    per_turn = contrast(rows, "ceo", "analyst", REASONING_PER_TURN)
+    per_sample = contrast(rows, "ceo", "analyst", REASONING_PER_SAMPLE)
+    assert per_turn["n_high"] == 6 and per_turn["n_high_all"] == 7
+    assert per_sample["n_high"] == 7 and per_sample["n_high_all"] == 7
+
+
+def test_a_log_with_no_samples_still_produces_a_block():
+    """An eval that died before writing its first sample has a header and no
+    rows. Dropping it reads as 'not run', which is a different fact."""
+    load = _load([], status="error")
+    report = reasoning_report(load)
+    assert BASE in report["models"]
+    assert "NO samples at all" in report["models"][BASE]["note"]
+
+
+def test_epoch_count_is_reported_per_block():
+    """The amendment's Reporting rule attributes every R-number to its epoch
+    count; it cannot be inferred from n_in_scope once cells are unbalanced."""
+    samples = []
+    for epoch in (1, 2, 3):
+        for scenario in "abcdefg":
+            for persona in ("ceo", "analyst"):
+                smp = _fake_sample(persona, scenario, reasoning=100, output=200, turns=2)
+                smp.epoch = epoch
+                samples.append(smp)
+    block = reasoning_report(_load(samples))["models"][BASE]
+    assert block["n_epochs"] == 3
+
+
+def test_zero_visible_gap_does_not_count_as_the_same_sign():
+    """`(a > 0) == (b > 0)` calls a negative gap and a ZERO gap the same sign,
+    which would fire the verbosity override on no visible effect at all."""
+    v = verdict(_c(-100, -150, -60, rel=(-1.0, -1.4, -0.6)),
+                _c(-29, -43, -18, rel=(-0.85, -1.25, -0.54)),
+                _c(0, -140, 140, rel=(0.0, -1.4, 1.4)))
+    assert not v["verbosity_override"]
+    assert v["verdict"] == "survivor"
+
+
+def test_sign_helper_is_three_valued():
+    from principal_eval.reasoning import _sign
+    assert (_sign(-2.0), _sign(0.0), _sign(3.0)) == (-1, 0, 1)
+    assert _sign(float("nan")) == 0

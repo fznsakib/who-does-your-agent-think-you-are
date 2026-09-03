@@ -99,6 +99,12 @@ class ReasoningRow:
 class ReasoningLoad:
     rows: list[ReasoningRow] = field(default_factory=list)
     logs_loaded: list[str] = field(default_factory=list)
+    # (model, arm, run_id) read from each log HEADER, independently of whether
+    # the log yielded any samples. An eval that died before writing its first
+    # sample has a header but no rows, and a row-derived key set would drop the
+    # model from the report entirely -- which reads as "not run" rather than
+    # "run, and produced nothing".
+    headers: list[tuple[str, str, str | None]] = field(default_factory=list)
     n_error: int = 0
     n_limit: int = 0
 
@@ -122,6 +128,7 @@ def load_reasoning_rows(paths: Iterable[str]) -> ReasoningLoad:
         arm = "pushback" if "pushback" in str(header.eval.task) else "base"
         run_id = getattr(header.eval, "run_id", None)
         load.logs_loaded.append(path)
+        load.headers.append((model, arm, run_id))
         require_all = header.status == "success"
         for s in read_eval_log_samples(path, all_samples_required=require_all):
             meta = s.metadata or {}
@@ -207,6 +214,16 @@ VISIBLE_PER_SAMPLE = _per_sample("visible")
 VISIBLE_PER_TURN = _per_turn("visible")
 TURNS_PER_SAMPLE = _per_sample("turns")
 
+# Which rows a value function actually uses. A per-turn mean cannot use a
+# sample with no assistant turn, so a contrast built on one must not advertise
+# the full cell `n` beside it -- that would print a denominator the estimate
+# never had. Keyed by function identity so a new per-turn statistic has to be
+# registered here rather than silently inheriting the per-sample denominator.
+_ELIGIBLE: dict[Any, Callable[[ReasoningRow], bool]] = {
+    REASONING_PER_TURN: lambda r: r.turns > 0,
+    VISIBLE_PER_TURN: lambda r: r.turns > 0,
+}
+
 
 # ---- R1/R2/R3 estimates ---------------------------------------------------
 
@@ -258,6 +275,7 @@ def contrast(
     scenario includes both sides of the contrast for it (plan rule 10).
     """
     pair = [r for r in rows if r.persona in (high, low)]
+    eligible = _ELIGIBLE.get(value, lambda r: True)
 
     def absolute(rs: list[ReasoningRow]) -> float:
         return value([r for r in rs if r.persona == high]) - value([r for r in rs if r.persona == low])
@@ -271,8 +289,10 @@ def contrast(
     return {
         "high": high,
         "low": low,
-        "n_high": sum(1 for r in pair if r.persona == high),
-        "n_low": sum(1 for r in pair if r.persona == low),
+        "n_high": sum(1 for r in pair if r.persona == high and eligible(r)),
+        "n_low": sum(1 for r in pair if r.persona == low and eligible(r)),
+        "n_high_all": sum(1 for r in pair if r.persona == high),
+        "n_low_all": sum(1 for r in pair if r.persona == low),
         "absolute": bootstrap_ci(pair, absolute),
         "relative": bootstrap_ci(pair, relative),
     }
@@ -386,6 +406,15 @@ def _excludes_zero(ci: dict) -> bool:
     return lo > 0 or hi < 0
 
 
+def _sign(x: float) -> int:
+    """Explicit three-way sign. `(a > 0) == (b > 0)` calls a negative and a
+    ZERO gap 'the same sign', which is how a zero visible-output gap could fire
+    the verbosity override against a negative reasoning gap."""
+    if x != x:
+        return 0
+    return (x > 0) - (x < 0)
+
+
 def _finite_ci(ci: dict) -> bool:
     lo, hi = ci.get("lo"), ci.get("hi")
     return lo is not None and hi is not None and lo == lo and hi == hi
@@ -419,10 +448,20 @@ def verdict(r1_gap: dict, r2_gap: dict, r3_gap: dict) -> dict:
             "interval (a contrast persona has no positive-turn samples), so the "
             "episode-length question is unanswered — neither survivor nor artefact"
         )
-    elif _excludes_zero(r2) and (r1["point"] > 0) == (r2["point"] > 0):
+    elif _excludes_zero(r2) and _sign(r1["point"]) == _sign(r2["point"]):
         label, why = "survivor", (
             "the gap survives per-turn normalisation with the same sign — more reasoning "
             "per act of reasoning, not merely longer episodes"
+        )
+    elif _excludes_zero(r2):
+        # R2 excludes zero in the OPPOSITE direction. That is neither of the two
+        # states the R6 table defines for this row, and calling it an artefact
+        # would attach a reason ("the per-turn gap does not exclude zero") that
+        # the interval flatly contradicts.
+        label, why = "per-turn sign reversal — inconclusive", (
+            "the per-sample and per-turn gaps both exclude zero but point in OPPOSITE "
+            "directions: normalisation reverses the ordering, which the pre-registered "
+            "table does not cover and which no single verdict here can honestly claim"
         )
     else:
         label, why = "artefact of episode length", (
@@ -439,7 +478,8 @@ def verdict(r1_gap: dict, r2_gap: dict, r3_gap: dict) -> dict:
     # effect left to reattribute.
     verbosity = (
         _excludes_zero(r1_gap["relative"])
-        and (r1_gap["relative"]["point"] > 0) == (r3_gap["relative"]["point"] > 0)
+        and _sign(r3_gap["relative"]["point"]) != 0
+        and _sign(r1_gap["relative"]["point"]) == _sign(r3_gap["relative"]["point"])
         and _overlap(r1_gap["relative"], r3_gap["relative"])
     )
     # Still applies to `control unavailable`: the override reattributes the
@@ -598,7 +638,8 @@ def reasoning_report(load: ReasoningLoad, allow_mixed_runs: bool = False) -> dic
     # Keys come from ALL loaded rows, not just the analysable ones, so a model
     # whose every sample errored or hit a limit is still REPORTED -- with its
     # disposition -- instead of vanishing from a multi-model arm.
-    keys = sorted({(r.model, r.arm) for r in load.rows})
+    keys = sorted({(r.model, r.arm) for r in load.rows}
+                  | {(m, a) for m, a, _ in load.headers})
     by_key: dict[tuple[str, str], list[ReasoningRow]] = defaultdict(list)
     for r in load.analysable():
         by_key[(r.model, r.arm)].append(r)
@@ -608,6 +649,8 @@ def reasoning_report(load: ReasoningLoad, allow_mixed_runs: bool = False) -> dic
     excluded_by_key: dict[tuple[str, str], dict[str, int]] = defaultdict(
         lambda: {"error": 0, "limit": 0})
     runs_by_key: dict[tuple[str, str], set] = defaultdict(set)
+    for m, a, rid in load.headers:
+        runs_by_key[(m, a)].add(rid)
     for r in load.rows:
         runs_by_key[(r.model, r.arm)].add(r.run_id)
         if r.excluded is not None:
@@ -649,6 +692,11 @@ def reasoning_report(load: ReasoningLoad, allow_mixed_runs: bool = False) -> dic
                                   else {"error": 0, "limit": 0},
             "n_in_scope": len(scoped),
             "n_scenarios": len({r.scenario for r in scoped}),
+            # Rule 22 / the amendment's Reporting paragraph: every R-number is
+            # attributed to model, arm, EPOCH COUNT and exclusion counts. It
+            # cannot be inferred from n_in_scope once cells are excluded or
+            # unbalanced, so it is carried explicitly.
+            "n_epochs": len({r.epoch for r in rows}),
             "measurable": total_reasoning > 0,
             "total_reasoning_tokens": total_reasoning,
             "persona_table": table,
@@ -663,9 +711,14 @@ def reasoning_report(load: ReasoningLoad, allow_mixed_runs: bool = False) -> dic
                 "together)."
             )
         if not rows:
+            n_seen = sum(1 for r in load.rows if (r.model, r.arm) == key)
             block["note"] = (
-                f"every sample for {label} was excluded (errored or limit-hit); "
-                "no estimate is possible and none is imputed"
+                (f"every sample for {label} was excluded (errored or limit-hit); "
+                 "no estimate is possible and none is imputed")
+                if n_seen else
+                (f"{label} produced NO samples at all — the log has a header but no "
+                 "sample records (an eval that failed before writing one). Reported so "
+                 "the model does not silently disappear from the arm.")
             )
             report["models"][label] = block
             continue

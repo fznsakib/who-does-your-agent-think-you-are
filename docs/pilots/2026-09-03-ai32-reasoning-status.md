@@ -113,7 +113,12 @@ intervals do not overlap, so the pre-registered verbosity override does not fire
 the separation is starker still — visible output per turn is **+0.7% [−5.0%, +5.8%]**,
 flat, while reasoning per turn is +28.6%.
 
-The model is not writing more for the CEO. It is thinking more.
+**Stated precisely:** opus-5 *is* detectably writing more for the CEO — +19.5% visible
+output, interval excluding zero. The claim R3 supports is not "it writes the same amount",
+it is that **verbosity does not account for the reasoning effect**: reasoning grows about
+five times faster than visible output, and the two intervals do not overlap. On sol the
+visible-output effect disappears entirely once turns are held constant (+0.7%
+[−5.0%, +5.8%]), so there the reasoning effect stands alone.
 
 ## 4. R4 — monotonicity, stated either way
 

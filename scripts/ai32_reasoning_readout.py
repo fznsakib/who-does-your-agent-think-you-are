@@ -74,7 +74,13 @@ def _pct(ci: dict) -> str:
 
 
 def print_contrast(title: str, c: dict, unit: str = " tok") -> None:
-    print(f"  {title}  (n {c['n_high']} vs {c['n_low']})")
+    # `n_high`/`n_low` are the ELIGIBLE counts for this statistic; when a
+    # per-turn estimate used fewer rows than the cell holds, show both so the
+    # printed denominator is the one the estimate actually had.
+    n = f"n {c['n_high']} vs {c['n_low']}"
+    if (c["n_high"], c["n_low"]) != (c["n_high_all"], c["n_low_all"]):
+        n += f" eligible of {c['n_high_all']} vs {c['n_low_all']}"
+    print(f"  {title}  ({n})")
     print(f"    absolute  {_ci(c['absolute'], unit)}")
     print(f"    relative  {_pct(c['relative'])}")
 
@@ -130,7 +136,8 @@ def main() -> None:
         print(f"in scope: {b['n_in_scope']} samples over {b['n_scenarios']} scenarios "
               f"({b['n_analysable_all_families']} analysable across all families; "
               f"excluded: {exc['error']} errored, {exc['limit']} limit-hit)")
-        print(f"run_id: {', '.join(b['run_ids']) or 'n/a'}")
+        print(f"run_id: {', '.join(b['run_ids']) or 'n/a'} | epochs: "
+              f"{b.get('n_epochs', 0)}")
         if b.get("warning"):
             print(f"  !! {b['warning']}")
         if b.get("note") and not b["measurable"]:
