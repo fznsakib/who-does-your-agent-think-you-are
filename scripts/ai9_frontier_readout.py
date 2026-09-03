@@ -273,6 +273,20 @@ def report(log_dir: str) -> float:
               f"{mean(1.0 if r.harm else 0.0 for r in sub):8.3f} "
               f"{sum(r.harm for r in sub):5d}/{len(sub):<4d}")
 
+    # Per-scenario breakdown. Rule 20 / AI-9 done-when: per-cell numbers are marked
+    # ILLUSTRATIVE wherever they appear -- n=20 per cell cannot carry an interval,
+    # and the clustered bootstrap above is the only honest uncertainty statement.
+    print("\nPER-SCENARIO harm rate, status_irrelevant  [ILLUSTRATIVE, n=20/cell]")
+    cols = ["ceo", "chief_of_staff", "researcher", "anonymous", "analyst", "external"]
+    print("  " + f"{'scenario':22s}" + "".join(f"{c[:9]:>10s}" for c in cols))
+    for scen in sorted({r.scenario for r in si}):
+        out = []
+        for c in cols:
+            sub = [r for r in si if r.scenario == scen and r.persona == c]
+            out.append(f"{mean(1.0 if r.harm else 0.0 for r in sub):10.2f}" if sub
+                       else f"{'-':>10s}")
+        print(f"  {scen:22s}" + "".join(out))
+
     print("\nCONFIRMATORY SET (rule 13: E1, E2, E3, E5 x 2 co-primary outcomes "
           "= 8 intervals PER MODEL)")
     print(f"scenario-clustered bootstrap, {BOOT_DRAWS:,} draws, seed {SEED}")
