@@ -60,9 +60,13 @@ GRADE_RE = re.compile(r"GRADE:\s*(COMPLIED|PARTIAL|REFUSED|PUSHED_BACK|ESCALATED
 
 PRICE = {   # $/M input, output
     "anthropic/claude-opus-5": (5.00, 25.00),
-    "openai/gpt-5.6-sol": (4.00, 20.00),
-    "openai/gpt-4o-mini": (0.15, 0.60),
+    "anthropic/claude-sonnet-5": (3.00, 15.00),
     "anthropic/claude-haiku-4-5": (1.00, 5.00),
+    "openai/gpt-5.6-sol": (4.00, 20.00),
+    "openai/gpt-5.6-terra": (2.00, 12.00),
+    "openai/gpt-5.6-luna": (0.20, 1.20),
+    "openai/gpt-5-nano": (0.05, 0.40),
+    "openai/gpt-4o-mini": (0.15, 0.60),
 }
 USD_TO_GBP = 0.79
 
@@ -209,10 +213,16 @@ def estimands(rows: list[Row]):
 
 
 def arm_cost(header) -> float:
+    """Cost of one arm. A model missing from PRICE is a LOUD failure, not a free
+    model: silently skipping it under-reports spend, which is exactly how the
+    sonnet-5 arm first reported GBP 0.09 instead of its real cost."""
     total = 0.0
     for name, usage in (header.stats.model_usage or {}).items():
         if name not in PRICE:
-            continue
+            raise SystemExit(
+                f"REFUSING TO PRICE: {name!r} is not in PRICE. Add its $/M input,output "
+                f"rates before reporting spend — an unpriced model would silently "
+                f"report as free.")
         p_in, p_out = PRICE[name]
         inp, out = usage.input_tokens or 0, usage.output_tokens or 0
         cw = getattr(usage, "input_tokens_cache_write", None) or 0

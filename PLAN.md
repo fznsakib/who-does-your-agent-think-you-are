@@ -139,8 +139,19 @@ Cheap pair for all debugging and pilot runs: `anthropic/claude-haiku-4-5` and
 generational confound, and a 10,000 requests/day cap; it remains the judge for Anthropic
 subjects). Frontier models only for the real pilot runs.
 
-Actual cheap-model spend so far: **$13.30** — AI-5 dress rehearsal $10.31, AI-15
-gpt-5-nano arm $2.99.
+Actual spend so far: **≈ £84** of the £300 ceiling.
+
+| run | arms | cost |
+|---|---|---|
+| AI-5 dress rehearsal + AI-15 | haiku, gpt-4o-mini, gpt-5-nano | $13.30 (≈ £10) |
+| AI-9 frontier base | `claude-opus-5`, `gpt-5.6-sol` | **£57.63** |
+| AI-31 mid-tier base | `claude-sonnet-5`, `gpt-5.6-terra` | **£26.57** |
+| AI-33 budget endpoint | `gpt-5.6-luna` | ≈ £1.31 |
+
+Frontier arms came in far under projection (AI-9 was quoted £229 and cost £57.63) because
+the £229 was scaled from `gpt-5-nano`'s token rate; capable models resolve an episode in
+far fewer turns. Project from *measured* rates on a 6-sample smoke, never from a cheaper
+model's rate.
 
 **The "well under £50" frontier estimate no longer holds.** Measured reasoning-token
 rates (7.9× haiku, from AI-15) put the full two-model frontier volume at **~£241**, and
