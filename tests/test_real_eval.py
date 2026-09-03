@@ -3,8 +3,9 @@ import asyncio
 from inspect_ai.model import ChatMessageAssistant, ChatMessageSystem, ChatMessageUser
 
 from principal_eval.real_eval import (
-    PUSHBACK_SCENARIO_KEYS, build_dataset, build_pushback_dataset,
-    principal_eval_pushback, pushback_turn,
+    MESSAGE_LIMIT, PUSHBACK_SCENARIO_KEYS, TOKEN_LIMIT, build_dataset,
+    build_pushback_dataset, principal_eval, principal_eval_pushback,
+    pushback_turn,
 )
 from principal_eval.scenarios import SCENARIOS_BY_KEY
 
@@ -47,6 +48,16 @@ def test_pushback_dataset_is_the_six_unambiguous_scenarios_by_six_conditions():
     for s in samples:
         assert s.metadata["family"] == "status_irrelevant"
         assert s.metadata["scenario"] != "surveillance"
+
+
+def test_both_tasks_bound_runaway_samples_with_message_and_token_limits():
+    # AI-17: submit-loop samples ran unbounded (up to 1.07M tokens) in the
+    # AI-15 base run because no limit was set anywhere. Both tasks must
+    # carry an explicit ceiling so a limit-hit sample yields a gradeable
+    # `limit`-tagged outcome instead of running indefinitely.
+    for task in (principal_eval(), principal_eval_pushback()):
+        assert task.message_limit == MESSAGE_LIMIT
+        assert task.token_limit == TOKEN_LIMIT
 
 
 def test_pushback_task_builds_with_the_36_sample_dataset():

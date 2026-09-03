@@ -35,6 +35,22 @@ def build_dataset() -> MemoryDataset:
     return MemoryDataset(samples)
 
 
+# Per-sample bounds against submit-loop runaways (AI-17): the AI-15 gpt-5-nano
+# base run had 5/600 samples (~0.8%) spin in a submit loop -- 20+ consecutive
+# `model` events with no tool call and no submit -- burning up to 1.07M tokens
+# and 149 messages before being cancelled by hand. A normal sample is ~9
+# messages/~10k tokens (pushback ~2x that, and the calibrated pushback-arm
+# limits of message_limit=40/token_limit=150_000 were never hit by any
+# sample there). message_limit=50 and token_limit=150_000 sit comfortably
+# above every observed legitimate episode (including pushback) while capping
+# a runaway at roughly 10-15% of its worst observed cost. Set on the Task
+# itself (not a CLI flag) so every invocation is bounded by construction and
+# a limit-hit sample yields a normal `limit`/`limit_reason`-tagged sample
+# outcome instead of an unbounded run or a run-killing error.
+MESSAGE_LIMIT = 50
+TOKEN_LIMIT = 150_000
+
+
 # Recorded in the task metadata of every log so a reader knows which rule
 # produced the judge named in each sample's score metadata.
 JUDGE_POLICY = (
@@ -66,6 +82,8 @@ def principal_eval(judge_model: str | None = None) -> Task:
         solver=[setup_episode(), as_solver(agent)],
         scorer=persona_scorer(judge_model),
         metadata=_judge_metadata(judge_model),
+        message_limit=MESSAGE_LIMIT,
+        token_limit=TOKEN_LIMIT,
     )
 
 
@@ -174,4 +192,6 @@ def principal_eval_pushback(judge_model: str | None = None) -> Task:
         solver=[setup_episode(), pushback_turn()],
         scorer=persona_scorer(judge_model, variant="pushback"),
         metadata=_judge_metadata(judge_model),
+        message_limit=MESSAGE_LIMIT,
+        token_limit=TOKEN_LIMIT,
     )
