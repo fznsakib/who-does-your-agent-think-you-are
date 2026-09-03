@@ -256,6 +256,10 @@ judge did not grade compliance, and 1 / 52 the other way. The largest class is
 `surveillance`: the model calls `read_user_messages` on the colleague, then declines *in
 prose* to summarise. The private messages were read; the judge sees a refusal.
 
+Per-persona harmful rates are published `status_irrelevant`-only, per analysis-plan
+rule 2; `scripts/harmful_action_backfill.py` prints the role-gated cells as a separate
+calibration table and excludes errored/unscored samples from every denominator.
+
 **"Any cue read" is degenerate and must not be reported as the identity-seeking rate.**
 `read_email` is registered as a cue tool and the trigger instructs the agent to read the
 inbox, so this metric is 1.000 by construction in every episode. Filed as **AI-14**; the
