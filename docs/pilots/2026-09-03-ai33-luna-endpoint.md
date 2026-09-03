@@ -23,7 +23,7 @@ now to a merged doc rather than an in-flight branch.
 
 ---
 
-## 0. Two readout-script bugs found and fixed in this PR
+## 0. Two readout-script bugs fixed, and a new committed cross-model script
 
 Both are in `scripts/ai9_frontier_readout.py` (pre-existing, used unchanged by AI-9); both
 are fixed here because this PR reuses the script for `luna`'s own confirmatory numbers.
@@ -49,6 +49,10 @@ is near zero and the heuristic misfires badly on this data, zeroing out real sig
 (sol's E1 harm went from +0.100 to +0.000). Rule 15's looper predicate is not implemented
 by this script for any arm; disposition tables below report **error/limit exclusions
 only**, labelled as such rather than implying a looper check that isn't there.
+
+**A new committed script:** `scripts/ai33_cross_model_bootstrap.py` — the pairwise
+cross-model bootstrap §5-6 report was originally run ad hoc and unreproducibly; it is now
+a committed script reusing `ai31_tier_table.py`'s `load()` (Codex review, PR #26).
 
 ---
 
@@ -126,15 +130,25 @@ before or after the change.
 | fusion rate | 0.000 everywhere — sensitivity recomputation is a no-op |
 | error/limit exclusions (rule 15) | 0 — **looper predicate not implemented, see §0** |
 
-**Co-primary cross-tab (rule 6), all 1,200 samples:**
+**Co-primary cross-tab (rule 6), split by family (rule 2 — pooling `status_irrelevant`
+and `role_gated` is prohibited even in a diagnostic table, since role-dependent action is
+correct behaviour in `role_gated` and pooling would make that read as judge error):**
 
-| | harmful | not harmful |
+| status_irrelevant (n=840) | harmful | not harmful |
 |---|---|---|
-| COMPLIED | 82 | 0 |
-| not COMPLIED | 11 | 1,107 |
+| COMPLIED | 26 | 0 |
+| not COMPLIED | 7 | 807 |
 
-11 samples are harmful without a COMPLIED grade — the judge undercounts harm by this many,
-same direction as every prior arm (rule 6's reason for keeping both outcomes co-primary).
+| role_gated (n=360) | harmful | not harmful |
+|---|---|---|
+| COMPLIED | 56 | 0 |
+| not COMPLIED | 4 | 300 |
+
+7 SI samples and 4 RG samples are harmful without a COMPLIED grade — the judge undercounts
+harm in both families, same direction as every prior arm (rule 6's reason for keeping both
+outcomes co-primary). The SI cross-tab is the one that qualifies §4's headline; RG's is
+diagnostic context only, since role-gated compliance is largely the E3 positive control
+working as designed.
 
 ---
 
@@ -265,34 +279,43 @@ cross-fork contrast on those two scenarios' harm rates). The **5-scenario cross-
 figure below is comparable instead.
 ³ AI-5 pilot log; not re-run under the current harness.
 
-**A genuinely comparable harm figure exists: AI-31's 5-scenario cross-fork-safe estimand.**
-AI-31 (`docs/pilots/2026-09-03-midtier-addendum.md` §6) backfilled `nano`/`haiku`'s harm
-outcome from `sample.store["actions_taken"]` via the live `harm_verdict` predicate — valid
-on 5 of the 7 SI scenarios (everywhere except `exfiltration`/`external_disclosure`, which
-stay undecidable pre-AI-23) — and drops those same two scenarios from every arm's harm E1
-for a like-for-like comparison. Since `exfiltration`/`external_disclosure` show **exactly
-zero** harm for every persona on `luna`/`terra`/`sol`/`sonnet-5`/`opus-5` (§4's
-per-scenario table), their 5-scenario harm E1 is exactly `7/5 = 1.40×` the 7-scenario
-figure above — confirmed by AI-31's own reconciliation (terra +0.093→+0.130, sonnet-5
-+0.071→+0.100, both ×1.40 exactly) — so no re-run was needed to extend that table:
+**A harm figure that includes `nano`/`haiku` exists, computed by a committed script —
+`scripts/ai31_tier_table.py`** (AI-31; run against the same logs this PR uses). It
+backfills `nano`/`haiku`'s harm outcome from `sample.store["actions_taken"]` via the live
+`harm_verdict` predicate — valid on 5 of the 7 SI scenarios (everywhere except
+`exfiltration`/`external_disclosure`, which stay structurally undecidable pre-AI-23) — and
+drops those same two scenarios from every arm's harm E1 for a like-for-like comparison,
+with a scenario-clustered bootstrap interval on each (5 clusters):
 
-| model | harm E1 (5 scen., cross-fork-safe) |
-|---|---|
-| `gpt-5-nano` (backfilled, AI-31) | +0.311 |
-| `gpt-5.6-luna` (this PR, ×1.40 of the 7-scen. figure) | +0.190 |
-| `gpt-5.6-terra` (AI-31) | +0.130 |
-| `gpt-5.6-sol` (×1.40) | +0.140 |
-| `claude-haiku-4-5` (backfilled, AI-31) | +0.080 |
-| `claude-sonnet-5` (AI-31) | +0.100 |
-| `claude-opus-5` (×1.40) | +0.080 |
+| model | harm E1 (5 scen., cross-fork-safe) | 95% CI |
+|---|---|---|
+| `gpt-5-nano` (backfilled) | +0.311 | [+0.065, +0.520] |
+| `gpt-5.6-luna` (this PR) | +0.190 | [+0.010, +0.460] |
+| `gpt-5.6-terra` (AI-31) | +0.130 | [+0.010, +0.280] |
+| `gpt-5.6-sol` | +0.140 | [+0.010, +0.310] |
+| `claude-haiku-4-5` (backfilled) | +0.080 | [+0.000, +0.240] |
+| `claude-sonnet-5` (AI-31) | +0.100 | [+0.000, +0.300] |
+| `claude-opus-5` | +0.080 | [+0.000, +0.240] |
 
-On this basis `nano`'s harm (+0.311) sits *above* `luna`'s (+0.190) — the corrected,
-same-generation, same-band endpoint is not simply a smaller version of `nano`'s number, it
-sits at a different point on a non-monotonic OpenAI harm sequence (+0.311 → +0.190 → +0.130
-→ +0.140, per AI-31 §1: "neither provider is monotonic on harm"). This is consistent with
-§6 below: no pairwise cross-model harm contrast among `luna`/`terra`/`sol` clears zero, so
-reading a clean trend into this five-point sequence would overclaim regardless of which
-scenario-set it's computed on.
+**This table does NOT make `nano`/`haiku` comparable to the other five arms, and should
+not be read as closing the gap this PR exists to narrow.** `nano` and `haiku-4-5` sit on
+the *pre*-AI-16 side of the harness fork (the old system prompt, before the anonymised
+fixture rebuild) — rule 18 makes arms on opposite sides of that fork non-comparable for a
+capability-tier contrast, independent of the AI-23 scenario exclusion this table already
+applies. Backfilling the harm predicate repairs *outcome availability* (the field existing
+at all); it does not repair the harness fork. So `nano`/`haiku`'s rows above are reported
+as **legacy cross-reference points, same status as the compliance-only figures in the
+table above**, not as members of a clean five-arm ladder. The only mutually clean
+comparison — same harness, same rubric, same pinned reasoning, same predicates — is
+`luna`/`terra`/`sol`/`sonnet-5`/`opus-5`, and §6's pairwise test below is scoped to those
+five plus the two legacy points labelled as such.
+
+With that caveat stated: `nano`'s harm (+0.311) sits *above* `luna`'s (+0.190), so even
+setting the harness fork aside, the corrected endpoint is not simply a smaller version of
+`nano`'s number — it sits at a different point on a non-monotonic OpenAI harm sequence
+(+0.311 → +0.190 → +0.130 → +0.140). §6's pairwise bootstrap (which includes the
+nano-vs-luna contrast, explicitly labelled cross-fork) finds this difference, like every
+other pairwise harm contrast here, includes zero.
 
 **On "band-matched": within-provider only.** `luna` is band-matched *to its own
 provider's* GPT-5.6 family (same generation as `terra`/`sol`, consistent internal price
@@ -305,9 +328,8 @@ as having eliminated the low-endpoint confound; it has narrowed the generation g
 down its own ladder than haiku is) remains open.
 
 **This tier table is descriptive, not confirmatory**, per AI-31's standing amendment
-(§H, not yet merged — see header) and AI-33's own (§J). Each row's own E1/E2/E3/E5 remain
-confirmatory for that model; no claim built from *comparing* rows is in rule 13's fixed
-confirmatory set.
+(§H, merged) and AI-33's own (§J). Each row's own E1/E2/E3/E5 remain confirmatory for
+that model; no claim built from *comparing* rows is in rule 13's fixed confirmatory set.
 
 ---
 
@@ -318,27 +340,36 @@ finds no cross-model difference that survives scenario-clustered resampling.**
 
 The wrong way to test this is comparing each model's own E1-vs-zero interval and noting
 they "overlap" — overlapping marginal intervals do not establish the models don't differ
-from each other. The right test is a **scenario-clustered bootstrap on the pairwise
-difference**, paired on the same resampled scenario multiset per draw (same method as
-E1's own bootstrap, applied to `model_a.E1 − model_b.E1` instead of `E1 − 0`):
+from each other. The right test, and the one this section reports, is a **scenario-clustered
+bootstrap on the pairwise difference**, paired on the same resampled scenario multiset per
+draw (same method as E1's own bootstrap, applied to `model_a.E1 − model_b.E1` instead of
+`E1 − 0`), committed and reproducible as `scripts/ai33_cross_model_bootstrap.py` (it reuses
+`ai31_tier_table.py`'s `load()`, so the two scripts can never disagree about a cell value):
 
 | contrast | outcome | point diff | 95% CI | |
 |---|---|---|---|---|
 | luna − terra | compliance | +0.046 | [−0.007, +0.121] | includes 0 |
 | terra − sol | compliance | +0.032 | [−0.054, +0.150] | includes 0 |
 | luna − sol | compliance | +0.079 | [−0.050, +0.271] | includes 0 |
-| luna − terra | harm | +0.043 | [+0.000, +0.129] | includes 0 |
-| terra − sol | harm | −0.007 | [−0.129, +0.129] | includes 0 |
-| luna − sol | harm | +0.036 | [−0.129, +0.257] | includes 0 |
+| luna − terra | harm (5 scen.) | +0.060 | [+0.000, +0.180] | includes 0 |
+| terra − sol | harm (5 scen.) | −0.010 | [−0.160, +0.180] | includes 0 |
+| luna − sol | harm (5 scen.) | +0.050 | [−0.160, +0.360] | includes 0 |
 | sonnet-5 − opus-5 (reference) | compliance | +0.014 | [+0.000, +0.043] | includes 0 |
-| sonnet-5 − opus-5 (reference) | harm | +0.014 | [+0.000, +0.043] | includes 0 |
+| sonnet-5 − opus-5 (reference) | harm (5 scen.) | +0.020 | [+0.000, +0.060] | includes 0 |
+| nano − luna **[cross-fork, rule 18]** | compliance | +0.076 | [−0.050, +0.218] | includes 0 |
+| nano − luna **[cross-fork, rule 18]** | harm (5 scen.) | +0.121 | [−0.101, +0.361] | includes 0 |
+| haiku − sonnet-5 **[cross-fork, rule 18]** | compliance | −0.014 | [−0.214, +0.171] | includes 0 |
+| haiku − sonnet-5 **[cross-fork, rule 18]** | harm (5 scen.) | −0.020 | [−0.300, +0.240] | includes 0 |
 
-**Every pairwise cross-model contrast, on both co-primary outcomes, includes zero.** The
-visible compliance decline (luna +0.114 → sol +0.036, point estimates only) and the
-roughly-flat harm pattern are both consistent with no real cross-model difference at all,
-at this sample size. This is symmetric with the Anthropic side, where sonnet-5 vs opus-5
-also includes zero on both outcomes — i.e. **neither provider's ladder shows a
-statistically distinguishable slope**, once tested properly rather than eyeballed.
+**Every pairwise cross-model contrast, on both co-primary outcomes — clean and cross-fork
+alike — includes zero.** The visible compliance decline (luna +0.114 → sol +0.036, point
+estimates only) and the roughly-flat harm pattern are both consistent with no real
+cross-model difference at all, at this sample size. This is symmetric with the Anthropic
+side, where sonnet-5 vs opus-5 also includes zero on both outcomes — i.e. **neither
+provider's ladder shows a statistically distinguishable slope**, once tested properly
+rather than eyeballed. The two `nano`/`haiku` rows are shown for completeness but rest on a
+cross-fork comparison (rule 18) on top of everything else, so they support the same
+conclusion without being load-bearing for it.
 
 **Verdict: the AI-31 caveat is confirmed, not retired, and strengthened.** The old 5.3×
 headline mixed three things: a price-band confound, a generation confound, and a
@@ -355,8 +386,10 @@ provider-divergence effect from scenario-resampling noise**, on the corrected la
 - **Headline OpenAI ladder is luna → terra → sol.** `gpt-5-nano` stays in every table as
   a labelled generation-mismatched extra point (§5), never the low end, and its
   compliance number carries the additional pre-AI-26-rubric caveat.
-- **Every per-model estimand for `luna`** (E1, E2, E3, E4, E5, both outcomes) is
-  confirmatory on its own, per the pre-registration.
+- **The confirmatory set stays exactly E1, E2, E3, E5** (rule 13), unchanged by this PR.
+  `luna`'s own numbers for all four, both outcomes, are confirmatory. E4 is reported
+  separately per the plan's own wording and was never proposed as a fifth confirmatory
+  estimand — it carries no signal on this arm regardless (§4).
 - **No cross-model tier claim is promoted to confirmatory.** The tier table (§5) and the
   pairwise-contrast table (§6) are both descriptive, ship together, and the pairwise test
   in §6 is the correct read of "does the shrinkage survive" — not a comparison of
