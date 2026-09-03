@@ -52,10 +52,16 @@ if left undone - not the one where the problem originated, which is often alread
 | `M1: Novelty pivot build` | proximity bundle, role-gated class, cue logging, pushback arm |
 | `M2: Pilot runs` | executing the matrix, cost projections, run health |
 | `M3: Analysis & validation` | deference gap, calibration split, identity-seeking, judge agreement |
-| `M4: Write-up & submit` | the write-up, figures, application answers |
-| `M5: Extensions` | counterfactual reveal, cue ablations, activation probes - post-application |
+| `M4: Frontier runs` | the frontier base and pushback runs, and everything that must be settled before spending on them - harness fixes that change what the data means, the pre-registered analysis plan, the outcome measures the runs inherit |
+| `M5: Write-up & submit` | the write-up, figures, application answers |
+| `M6: Extensions` | counterfactual reveal, cue ablations, activation probes - post-application |
 
-When research work fits none of them, say so and ask rather than defaulting to M5. A
+**M3 vs M4 is the boundary that gets mistaken.** M3 is analysing data that already
+exists. M4 is anything that must be settled *before* the frontier run — including analysis
+work, if it changes what the frontier data can support. A pre-registration written after
+the data is worth nothing, so it belongs in M4 even though it is an analysis task.
+
+When research work fits none of them, say so and ask rather than defaulting to M6. A
 milestone that does not exist is a finding about the plan.
 
 ## Priority (required)
