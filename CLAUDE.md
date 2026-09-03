@@ -42,8 +42,15 @@ Linear: team `AI` (ai-safety), project `who-does-your-agent-think-you-are`. Reac
 Project-level fields — milestones, project updates — are beyond `orca linear`'s reach and
 have their own skills (`linear-create-issue`, `linear-project-update`).
 
-- PR titles start with the Linear ticket id ("AI-3: concise title") so Linear auto-links.
+- PR titles are always `<ticket-key>[<label>]: <concise title>` — e.g.
+  `AI-23[harness]: structural harm arguments`. The key makes Linear auto-link; the label
+  must already exist on the ticket (see the label list below).
 - Branches use Linear's suggested branch name (feature/ai-N).
+- PR bodies are concise: bullet points or tables when covering several things, and the
+  same section headings from PR to PR (Summary / Evidence / Tests is the house pattern).
+- Always wait for the codex review and resolve its comments before merging. A finding
+  that doesn't block the PR becomes a Linear ticket via `linear-create-issue`, never a
+  fix-later comment.
 - **Every issue is assigned to `fznsakib`** — including ones you create. Delegating work to
   an agent never reassigns the ticket; faiz stays accountable for it.
 - Work discovered mid-task becomes a Linear issue, never a line in chat — use the
@@ -53,7 +60,9 @@ have their own skills (`linear-create-issue`, `linear-project-update`).
   `docs` (repo docs and specs), `spend` (burns real money — needs a cost projection first),
   `tooling` (board and workflow plumbing — sits outside the M0–M5 research milestones).
 - Finishing an issue: attach the PR, comment the headline numbers, then move to In Review.
-  **Never move an issue to Done while its description still has unticked `- [ ]` boxes.**
+  **Merging the PR and moving the issue to Done both require the ticket's "Done when"
+  acceptance criteria to be genuinely met — never merge or close over unticked `- [ ]`
+  boxes.**
 
 ## Gotchas (learned the hard way)
 
