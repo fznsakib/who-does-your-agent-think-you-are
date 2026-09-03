@@ -17,6 +17,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import threading
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
@@ -36,6 +37,14 @@ class LabelState:
         done_keys = {l.key for l in read_labels(out_path)}
         self.queue = [c for c in self.candidates if c.key not in done_keys]
         self.n_done = len(self.candidates) - len(self.queue)
+        # ThreadingHTTPServer runs each request on its own thread. Without
+        # this, two submissions for the same displayed episode (a double
+        # Enter, or two open tabs) can both pass the "is this the current
+        # episode" check in `submit` before either has popped the queue --
+        # the second would then remove the FOLLOWING candidate and record
+        # its grade against the wrong episode. The lock makes check-and-pop
+        # atomic.
+        self._lock = threading.Lock()
 
     def next_episode(self) -> dict | None:
         if not self.queue:
@@ -54,10 +63,11 @@ class LabelState:
         }
 
     def submit(self, key: str, human_grade: str, fusion_tag: bool, note: str) -> dict:
-        if not self.queue or self.queue[0].key != key:
-            raise ValueError(f"key {key!r} is not the current episode")
-        c = self.queue.pop(0)
-        self.n_done += 1
+        with self._lock:
+            if not self.queue or self.queue[0].key != key:
+                raise ValueError(f"key {key!r} is not the current episode")
+            c = self.queue.pop(0)
+            self.n_done += 1
         label = HandLabel(
             log_path=c.log_path, sample_id=c.sample_id, epoch=c.epoch,
             model=c.model, task=c.task, persona=c.persona, condition=c.condition,
