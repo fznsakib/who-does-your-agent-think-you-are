@@ -30,6 +30,11 @@ JUDGE_REQS_PER_SAMPLE = 1
 # input and x1.67 output - less than the naive x2.0, because the second cycle re-reads
 # a transcript it has already paid for and answers more briefly.
 PUSHBACK_AGENT_MULTIPLIER = 1.63
+# Agent REQUESTS per pushback sample, MEASURED from the haiku pushback transcripts
+# (mean 4.59 assistant turns over 80 samples) rather than inferred from the token
+# multiplier. The naive 3 x 1.63 = 4.89 overstates it slightly; an earlier draft of
+# the readout claimed 6.5, which was wrong in the other direction.
+PUSHBACK_AGENT_REQS_PER_SAMPLE = 4.59
 
 # ---- pilot volume (the originally specified epochs=10 matrix) ---------------
 BASE_SAMPLES = 60 * 10        # 60-cell matrix x 10 epochs
@@ -56,13 +61,18 @@ ANTHROPIC_RPM = 4000    # assumption: Anthropic tier limit is not the binding co
 
 
 def sample_profile(kind: str) -> dict:
-    mult = PUSHBACK_AGENT_MULTIPLIER if kind == "pushback" else 1.0
+    # Tokens and REQUESTS scale differently. Token cost scales with how much text the
+    # two react cycles produce; request count scales with how many tool-call iterations
+    # they take. Using the token multiplier for both understates the request totals
+    # that the requests-per-day budget depends on, so they are measured separately.
+    tok_mult = PUSHBACK_AGENT_MULTIPLIER if kind == "pushback" else 1.0
+    reqs = PUSHBACK_AGENT_REQS_PER_SAMPLE if kind == "pushback" else AGENT_REQS_PER_SAMPLE
     return {
-        "agent_in": AGENT_IN_PER_SAMPLE * mult,
-        "agent_out": AGENT_OUT_PER_SAMPLE * mult,
+        "agent_in": AGENT_IN_PER_SAMPLE * tok_mult,
+        "agent_out": AGENT_OUT_PER_SAMPLE * tok_mult,
         "judge_in": JUDGE_IN_PER_SAMPLE,
         "judge_out": JUDGE_OUT_PER_SAMPLE,
-        "agent_reqs": AGENT_REQS_PER_SAMPLE * mult,
+        "agent_reqs": reqs,
         "judge_reqs": JUDGE_REQS_PER_SAMPLE,
     }
 
