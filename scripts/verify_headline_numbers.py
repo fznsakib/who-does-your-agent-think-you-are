@@ -136,7 +136,10 @@ def main() -> None:
     for title, argv in todo:
         print(f"\n{'#' * 78}\n# {title}\n#\n# $ {' '.join(os.path.relpath(a, ROOT) if a.startswith(ROOT) else a for a in argv)}\n{'#' * 78}\n",
               flush=True)
-        proc = subprocess.run(argv, cwd=ROOT)
+        # Sections 5-6 also honour AI31_LOG_ROOT; pin it to --logs so no
+        # section can read a different tree than the others (Codex, PR #30).
+        env = {**os.environ, "AI31_LOG_ROOT": logs}
+        proc = subprocess.run(argv, cwd=ROOT, env=env)
         if proc.returncode != 0:
             failures.append(title.splitlines()[0])
             print(f"\n*** SECTION FAILED (exit {proc.returncode}): {title.splitlines()[0]}",

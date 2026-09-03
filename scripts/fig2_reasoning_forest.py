@@ -5,11 +5,14 @@ Five arms, split by evidentiary status per the AI-32 pre-registration
 (opus-5, sol) are EXPLORATORY; the arms that did not (terra, sonnet-5, luna)
 are CONFIRMATORY. The split is drawn on the figure, not left to a caption.
 
-Reuses `principal_eval.reasoning` — `load_reasoning_rows`, `ladder_rows`,
-`contrast` with `REASONING_PER_SAMPLE` — i.e. exactly the pipeline behind
-`scripts/ai32_reasoning_readout.py`, so the plotted intervals are the readout's
-own (95% scenario-clustered bootstrap, 10,000 draws, seed 6, contrasts paired
-within each resample). Never unzips `.eval` files; `inspect_ai.log` API only.
+Reuses `principal_eval.reasoning` — `load_reasoning_rows` + `reasoning_report`
+— i.e. exactly the pipeline behind `scripts/ai32_reasoning_readout.py`, so the
+plotted R1 intervals AND the R6 verdict annotations are computed from the same
+loaded rows (95% scenario-clustered bootstrap, 10,000 draws, seed 6, contrasts
+paired within each resample). `reasoning_report` refuses to pool more than one
+run into an arm, so a smoke log sitting beside a production log fails loudly
+rather than being silently picked. Never unzips `.eval` files; `inspect_ai.log`
+API only.
 
 Usage:
     uv run python scripts/fig2_reasoning_forest.py [--logs <root>]
@@ -31,36 +34,42 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, f"{ROOT}/src")
 
-from principal_eval.reasoning import (  # noqa: E402
-    HIGH_STATUS,
-    REASONING_PER_SAMPLE,
-    REFERENCE,
-    contrast,
-    ladder_rows,
-    load_reasoning_rows,
-)
+from principal_eval.reasoning import load_reasoning_rows, reasoning_report  # noqa: E402
 
-# (label, log dir relative to --logs, status, R6 verdict from the readout docs)
+# (label, log dir relative to --logs, evidentiary status per the amendment).
+# The R6 verdict is NOT listed here: it is computed from the logs below, so a
+# rerun or corrected arm can never carry a stale annotation.
 ARMS = [
-    ("claude-opus-5 (frontier)", "ai9-frontier/opus5-base", "exploratory", "survivor"),
-    ("gpt-5.6-sol (frontier)", "ai9-frontier/gpt56sol-base", "exploratory", "survivor"),
-    ("gpt-5.6-terra (mid)", "ai31-midtier/terra-base", "confirmatory", "survivor"),
-    ("claude-sonnet-5 (mid)", "ai31-midtier/sonnet5-base", "confirmatory", "verbosity"),
-    ("gpt-5.6-luna (low)", "ai9-frontier/gpt56luna-base", "confirmatory", "verbosity"),
+    ("claude-opus-5 (frontier)", "ai9-frontier/opus5-base", "exploratory"),
+    ("gpt-5.6-sol (frontier)", "ai9-frontier/gpt56sol-base", "exploratory"),
+    ("gpt-5.6-terra (mid)", "ai31-midtier/terra-base", "confirmatory"),
+    ("claude-sonnet-5 (mid)", "ai31-midtier/sonnet5-base", "confirmatory"),
+    ("gpt-5.6-luna (low)", "ai9-frontier/gpt56luna-base", "confirmatory"),
 ]
 
+SHORT_VERDICT = {"survivor": "survivor",
+                 "verbosity, not deliberation": "verbosity"}
 
-def r1_relative(log_dir: str) -> dict:
-    """R1's relative gap {point, lo, hi} for one production arm."""
+
+def r1_block(log_dir: str) -> dict:
+    """R1's relative gap {point, lo, hi, n_high, n_low} plus the R6 verdict,
+    from the full R-series pipeline over EVERY .eval in the arm directory.
+    `reasoning_report` raises if those logs belong to more than one run."""
     paths = sorted(glob.glob(f"{log_dir}/**/*.eval", recursive=True))
     if not paths:
         raise SystemExit(f"no .eval under {log_dir}")
-    # Production dirs hold a single run; take the latest, matching the
-    # per-arm convention of ai9_frontier_readout.py / ai31_tier_table.py.
-    load = load_reasoning_rows([paths[-1]])
-    scoped = ladder_rows(load.analysable())
-    c = contrast(scoped, HIGH_STATUS, REFERENCE, REASONING_PER_SAMPLE)
-    return {**c["relative"], "n_high": c["n_high"], "n_low": c["n_low"]}
+    report = reasoning_report(load_reasoning_rows(paths))
+    blocks = [b for b in report["models"].values() if b["arm"] == "base"]
+    if len(blocks) != 1:
+        raise SystemExit(f"{log_dir}: expected exactly one base-arm model block, "
+                         f"got {[b['model'] for b in blocks]}")
+    b = blocks[0]
+    if "R1_status_gap" not in b:
+        raise SystemExit(f"{log_dir}: {b.get('note', 'no R1 available')}")
+    c = b["R1_status_gap"]
+    verdict = b["R6_verdict"]["verdict"]
+    return {**c["relative"], "n_high": c["n_high"], "n_low": c["n_low"],
+            "verdict": SHORT_VERDICT.get(verdict, verdict)}
 
 
 def main() -> None:
@@ -70,11 +79,12 @@ def main() -> None:
     args = ap.parse_args()
 
     results = []
-    for label, rel_dir, status, verdict in ARMS:
-        ci = r1_relative(f"{args.logs}/{rel_dir}")
-        results.append((label, status, verdict, ci))
+    for label, rel_dir, status in ARMS:
+        ci = r1_block(f"{args.logs}/{rel_dir}")
+        results.append((label, status, ci["verdict"], ci))
         print(f"{label:28s} {status:12s} R1 {ci['point']:+.1%} "
-              f"[{ci['lo']:+.1%}, {ci['hi']:+.1%}]  n {ci['n_high']} vs {ci['n_low']}")
+              f"[{ci['lo']:+.1%}, {ci['hi']:+.1%}]  n {ci['n_high']} vs {ci['n_low']}"
+              f"  R6: {ci['verdict']}")
 
     fig, ax = plt.subplots(figsize=(9, 5))
     ys = list(range(len(results) - 1, -1, -1))

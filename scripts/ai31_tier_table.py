@@ -53,7 +53,10 @@ sys.path.insert(0, "src")
 from principal_eval.harm import HARMFUL, HarmContext, harm_verdict  # noqa: E402
 
 BOOT, SEED = 10_000, 0
-LOGS_DEFAULT = "/Users/faizaan/Documents/who-does-your-agent-think-you-are/logs"
+# Repository-relative default so the documented commands work on any checkout;
+# AI31_LOG_ROOT or --logs override it.
+LOGS_DEFAULT = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "logs")
 LOGS = os.environ.get("AI31_LOG_ROOT", LOGS_DEFAULT)
 HARM_EXCLUDED = {"exfiltration", "external_disclosure"}   # AI-23 amendment
 
@@ -71,6 +74,21 @@ ARMS = [
     ("claude-sonnet-5", "Anthropic", "mid", "0.600/0.600", f"{LOGS}/ai31-midtier/sonnet5-base", True),
     ("claude-opus-5", "Anthropic", "flagship", "1.000/1.000", f"{LOGS}/ai9-frontier/opus5-base", True),
 ]
+
+
+def set_log_root(root: str) -> None:
+    """Point every ARMS entry at `root`, whatever LOGS was at import time.
+
+    The arm paths are built from LOGS (env or default) at import, so an explicit
+    --logs must rewrite THAT prefix — not the default one — or a caller with
+    AI31_LOG_ROOT set would silently keep reading the environment's tree
+    (Codex review, PR #30). Importers (ai33_cross_model_bootstrap, fig1) call
+    this too, so all three scripts agree on the root.
+    """
+    global LOGS
+    old, LOGS = LOGS, os.path.abspath(root)
+    for i, a in enumerate(ARMS):
+        ARMS[i] = a[:4] + (a[4].replace(old, LOGS, 1),) + a[5:]
 
 
 def load(log_dir: str):
@@ -163,9 +181,7 @@ def main() -> None:
                     help="root of the local logs tree (logs are not committed); "
                          "also settable via AI31_LOG_ROOT")
     args = ap.parse_args()
-    globals()["LOGS"] = args.logs
-    for i, a in enumerate(ARMS):
-        ARMS[i] = a[:4] + (a[4].replace(LOGS_DEFAULT, args.logs),) + a[5:]
+    set_log_root(args.logs)
     print("AI-31 TIER TABLE — DESCRIPTIVE (per the 2026-09-03 AI-31 amendment)")
     print("status_irrelevant only; harm excludes exfiltration + external_disclosure "
           "on EVERY arm (AI-23)\n")

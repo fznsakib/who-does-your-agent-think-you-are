@@ -92,7 +92,7 @@ every judge-derived headline.
 | claim | number | readout § |
 |---|---|---|
 | The judge undercounts harm on OpenAI models, not Anthropic: harmful-but-not-COMPLIED = sol **19**, terra **22**, opus-5 **0**, sonnet-5 **0** | 19 / 22 / 0 / 0 | frontier-base §6, midtier-addendum §4 |
-| luna, same direction (SI family): 7 harmful without COMPLIED (26 with). The verify output prints the all-family cross-tab (11 = 7 SI + 4 RG); the readout splits it per rule 2 | 7 | ai33-luna-endpoint §3 |
+| luna, same direction, SI family: 7 harmful without COMPLIED (26 with); RG family 4 (56 with). The command prints both the all-family tab (11) and the per-family split | 7 (SI) | ai33-luna-endpoint §3 |
 | Judge channel is open (rule 21, `identity_mentioned`): opus-5 1.000 on every identified persona; sol high; sonnet-5 ≈1.000; terra high; luna 0.264–0.671. **Note:** the frontier-base §6 / midtier-addendum §4 tables predate the ai33-luna-endpoint §0 fix (they pooled `role_gated` rows in), so the verify output's SI-only values differ slightly from those two docs (e.g. opus-5 anonymous 0.707 vs 0.700, sol ceo 0.921 vs 0.945); the luna doc already uses the corrected SI-only values, which are what the command now prints for every arm. The qualitative claim (channel substantially open) is unchanged. **Second note (AI-38 finding):** midtier-addendum §4's *terra* column (0.945 / 0.730 / 0.975 / 0.440) duplicates *sol's* frontier-base §6 values; terra's actual SI-only rates are ceo 0.493, analyst 0.364, external 0.871, anonymous 0.057 — the write-up must use the command's output, not that column | per-persona tables | frontier-base §6, midtier-addendum §4, ai33-luna-endpoint §0, §4 |
 | Fusion rate 0.000 on every persona, all five arms — the rule-16 sensitivity is a no-op | 0.000 | frontier-base §4, midtier-addendum §2, ai33-luna-endpoint §3 |
 | Disposition: 0 excluded samples on all five arms (1200/1200 each); rule-15 bounds equal the point estimates | 0 | frontier-base §3, midtier-addendum §2, ai33-luna-endpoint §3 |
@@ -157,9 +157,12 @@ labelled legacy cross-references, never ladder endpoints.
 Commands (verify §5–6):
 
 ```bash
-uv run python scripts/ai31_tier_table.py
-uv run python scripts/ai33_cross_model_bootstrap.py
+uv run python scripts/ai31_tier_table.py --logs logs
+uv run python scripts/ai33_cross_model_bootstrap.py --logs logs
 ```
+
+(Both default to the repository's `logs/` directory; `--logs` or
+`AI31_LOG_ROOT` override it. The verify script pins both to its own `--logs`.)
 
 Log paths: the five Table 1 dirs plus `logs/ai15-gpt5nano/base` and
 `logs/ai5-pilot/haiku-base`.
@@ -193,7 +196,7 @@ Command (verify §7):
 | nano E2 proximity (leadership-proximity bundle, never "rank held constant") | +0.121 [+0.024, +0.250] | 〃 | ai6-readout T3 |
 | nano E4 external−analyst (reported separately, not confirmatory) | −0.129 [−0.257, −0.043] | 〃 | ai6-readout T3 |
 | nano E5 identified-ladder spread — not collapsed (interval clear of 0) | 0.319 [0.094, 0.603] | 〃 | ai6-readout T6 |
-| nano harmful-action rate, SI (rule-17 interval [harmful, harmful+undecidable]) | [0.189, 0.194] | 〃 | ai6-readout T2 |
+| nano harmful-action rate, SI. **Not a 95% CI**: a rule-17 partial-identification bound, `harmful/n` to `(harmful+undecidable)/n`, with no resampling — it states classification ambiguity, not sampling uncertainty | bounds [0.189, 0.194] (n=417) | 〃 | ai6-readout T2 |
 | nano judge-vs-harm disagreement: judge missed 34 harmful; 3 COMPLIED-not-harmful | 34 / 3 | 〃 | ai6-readout T2 |
 | **Paired pushback flip toward compliance vs null floor: 17.1% vs 9.0% (~1.9×) — the signal; raw paired flip 47.6% vs null 50.6% is churn, not signal** | 17.1% vs 9.0% | `logs/ai18-backfill/gpt5nano-pushback` (+ base) | ai6-readout, pushback § |
 | Pushback group means (before → after, matched cells) | 0.171 → 0.276 | 〃 | ai6-readout, pushback § |

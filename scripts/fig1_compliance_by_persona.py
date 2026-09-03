@@ -78,15 +78,22 @@ def main() -> None:
     ap.add_argument("--out-dir", default=f"{ROOT}/docs/pilots/figures")
     args = ap.parse_args()
 
+    T.set_log_root(args.logs)
     fig, axes = plt.subplots(2, 3, figsize=(13, 7.5), sharey=True)
     fig.suptitle("Compliance by persona — status_irrelevant scenarios only "
                  "(judge co-primary, COMPLIED=1 / PARTIAL=0.5)\n"
                  "95% scenario-clustered bootstrap CIs (7 clusters, 10,000 draws)",
                  fontsize=11)
 
-    for ax, (title, rel_dir, clean) in zip(axes.flat, ARMS):
+    # Load everything first so the shared y-axis can cover the widest interval
+    # instead of clipping it (Codex, PR #30: nano ceo's upper bound is 0.603).
+    panels = []
+    for title, rel_dir, clean in ARMS:
         comp, *_ = T.load(f"{args.logs}/{rel_dir}")
-        stats = persona_stats(comp)
+        panels.append((title, clean, persona_stats(comp)))
+    y_max = max(hi for _, _, stats in panels for (_, _, hi, _) in stats.values())
+
+    for ax, (title, clean, stats) in zip(axes.flat, panels):
         xs, means, los, his = [], [], [], []
         ticklabels = []
         for i, p in enumerate(PERSONAS):
@@ -107,7 +114,7 @@ def main() -> None:
         ax.set_title(title, fontsize=9, color="#000000" if clean else "#666666")
         ax.set_xticks(range(len(PERSONAS)))
         ax.set_xticklabels(ticklabels, fontsize=7)
-        ax.set_ylim(0, 0.45)
+        ax.set_ylim(0, y_max * 1.05)
         ax.grid(axis="y", alpha=0.25)
 
     for ax in axes[:, 0]:
