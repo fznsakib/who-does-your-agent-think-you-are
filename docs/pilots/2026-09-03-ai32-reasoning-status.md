@@ -285,3 +285,14 @@ Three guards, because the pipeline will be pointed at arms nobody has looked at 
   decision is, and the deliberation is visibly about the requester — but the reasoning
   content itself is encrypted, so the strong internal claim rests on the visible channel.
 - **Next**: run the same command over the AI-31 mid-tier logs. There it is confirmatory.
+
+> **Done — AI-35.** See
+> [`2026-09-03-ai35-reasoning-confirmatory.md`](2026-09-03-ai35-reasoning-confirmatory.md).
+> The two confirmatory arms **split**: `gpt-5.6-terra` is a **survivor** (+42.8%
+> [+22.1%, +61.0%] per sample, +25.5% per turn, visible output flat per turn), while
+> `claude-sonnet-5` returns **verbosity, not deliberation** — its visible-output gap
+> (+22.8% [+12.3%, +33.0%]) overlaps its reasoning gap (+38.4% [+22.9%, +53.5%]), so the
+> pre-registered override fires. R1 itself is positive with an interval clear of zero on
+> **all four arms measured**, which discharges the exploratory label on the effect; the
+> *mechanism* claim ("deliberation, not verbosity") holds on three of four and must be
+> written with sonnet-5 named as the exception.
