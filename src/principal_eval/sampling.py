@@ -10,6 +10,7 @@ would barely touch them.
 from __future__ import annotations
 
 import json
+import os
 import random
 from dataclasses import asdict, dataclass
 from math import ceil
@@ -175,6 +176,7 @@ def stratified_sample(
 
 
 def write_manifest(candidates: list[Candidate], path: str) -> None:
+    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
     with open(path, "w") as f:
         json.dump([asdict(c) for c in candidates], f, indent=2, default=str)
 

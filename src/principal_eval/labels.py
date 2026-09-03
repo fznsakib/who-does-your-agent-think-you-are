@@ -63,6 +63,7 @@ def read_labels(path: str) -> list[HandLabel]:
 
 
 def append_label(path: str, label: HandLabel) -> None:
+    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
     exists = os.path.exists(path)
     with open(path, "a", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=CSV_FIELDS)
