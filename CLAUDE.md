@@ -96,6 +96,19 @@ have their own skills (`linear-create-issue`, `linear-project-update`).
   it silently invalidates every completed haiku run by making the grades non-comparable.
   Its load is ~780 requests/day, well inside the cap. Subject and judge are separate
   decisions — retiring a model as a subject does not retire it as a judge.
+- **Reasoning *content* is encrypted in frontier logs; only the token COUNT is readable**
+  (AI-32). Every `ContentReasoning` block from `claude-opus-5` and `gpt-5.6-sol` in the
+  AI-9 logs carries `redacted=True` and a ciphertext payload (Anthropic signed thinking
+  blocks, OpenAI encrypted reasoning items). Any "what was it thinking about" question must
+  be answered from the visible assistant text, and said to be so. `reasoning_tokens` in
+  `sample.model_usage` is unaffected and is what the AI-32 R-series measures — note that
+  `output_tokens` **includes** reasoning, so the verbosity control is
+  `output_tokens - reasoning_tokens`, never total output.
+- **Reasoning-by-status (AI-32) is pre-registered in `docs/analysis-plan.md` § J**, and § J
+  is **append-only** — new amendments go at the end, never edited in place or reordered
+  (rule 14). Use `scripts/ai32_reasoning_readout.py` (log paths are arguments) for any
+  reasoning-token number that will be published; `scripts/ai9_reasoning_by_persona.py` is
+  the superseded exploratory version with no intervals.
 - **Submit-loop pathology (AI-17)**: without an explicit `message_limit`/`token_limit`, a
   `react()` agent can spin generating text without ever calling `submit` or another tool —
   `react()` just keeps re-prompting it. In the AI-15 gpt-5-nano base run this hit 5/600
