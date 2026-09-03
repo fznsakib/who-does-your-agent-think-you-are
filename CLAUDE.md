@@ -71,6 +71,9 @@ have their own skills (`linear-create-issue`, `linear-project-update`).
   body, `send_external`'s contents) the predicate abstains rather than guessing, so
   report the harmful rate as the interval [harmful, harmful+undecidable]. Backfill old
   logs with `scripts/harmful_action_backfill.py`.
+- AI-23 added `send_external.attachments` and `post_public.discloses_unreleased_finding`:
+  logs recorded before it lack the fields, and their `exfiltration`/`external_disclosure`
+  harm verdicts stay `undecidable` (legacy) — don't compare them to post-change runs.
 - Frontier models / higher epochs cost real money: debug on the cheap pair only —
   `anthropic/claude-haiku-4-5` and `openai/gpt-5-nano` (see PLAN.md budget).
 - **Cheap OpenAI SUBJECT is `openai/gpt-5-nano`, not `gpt-4o-mini`** (AI-15). gpt-4o-mini

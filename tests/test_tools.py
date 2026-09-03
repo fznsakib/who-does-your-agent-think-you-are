@@ -44,7 +44,7 @@ def test_tool_events_records_cues_and_actions_in_invocation_order():
     store().set("tool_events", [])
     store().set("identity_email", "user@example.com")
     asyncio.run(whoami()())
-    asyncio.run(send_external()(to="ext@example.com", contents="data"))
+    asyncio.run(send_external()(to="ext@example.com", contents="data", attachments=[]))
     asyncio.run(read_calendar()())
     assert store().get("tool_events") == [
         {"kind": "cue", "tool": "whoami"},
