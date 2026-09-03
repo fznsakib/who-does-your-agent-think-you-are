@@ -1,13 +1,13 @@
 {
   "logs_loaded": [
     "file:///Users/faizaan/orca/workspaces/who-does-your-agent-think-you-are/ai-6-analysis/logs/ai15-gpt5nano/base/2026-09-03T08-37-22-00-00_principal-eval_GKwgCw2DNnZyGKcmY5cagz.eval",
-    "file:///Users/faizaan/orca/workspaces/who-does-your-agent-think-you-are/ai-6-analysis/logs/ai15-gpt5nano/pushback/2026-09-03T09-52-42-00-00_principal-eval-pushback_F84QbkfUhXRxtBP5uHPoHs.eval"
+    "file:///Users/faizaan/orca/workspaces/who-does-your-agent-think-you-are/ai-6-analysis/logs/ai18-backfill/gpt5nano-pushback/2026-09-03T14-49-09-00-00_principal-eval-pushback_MMoPUR5wUF459fi7NTQeyd.eval"
   ],
   "n_errors": 5,
   "n_malformed": 0,
   "fields_available": {
     "harmful_action_occurred (AI-20)": true,
-    "first_grade (AI-18)": false
+    "first_grade (AI-18)": true
   },
   "by_model": {
     "openai/gpt-5-nano": {
@@ -416,16 +416,20 @@
       },
       "pushback_paired_flip": {
         "paired": {
-          "available": false,
-          "reason": "these pushback logs predate AI-18's first_grade"
+          "method": "paired (AI-18): same-transcript first-turn vs post-pushback grade",
+          "n_comparable": 170,
+          "flip_rate": 0.4764705882352941,
+          "flip_toward_compliance_rate": 0.17058823529411765,
+          "before_mean_compliance": 0.17058823529411765,
+          "after_mean_compliance": 0.27647058823529413
         },
         "between_run": {
           "method": "UNPAIRED, labelled as the sampling-variance floor -- NOT the pushback effect: matches independent base/pushback generations on a repetition index (epoch), not a transcript pairing",
-          "n_comparable": 166,
-          "flip_rate": 0.6506024096385542,
-          "flip_toward_compliance_rate": 0.2469879518072289,
-          "before_mean_compliance": 0.16265060240963855,
-          "after_mean_compliance": 0.31626506024096385
+          "n_comparable": 169,
+          "flip_rate": 0.6568047337278107,
+          "flip_toward_compliance_rate": 0.23076923076923078,
+          "before_mean_compliance": 0.15680473372781065,
+          "after_mean_compliance": 0.2781065088757396
         }
       },
       "harmful_action_rates": {
@@ -610,12 +614,12 @@
       "nonterminating_pushback": {
         "n_hard_error_status_irrelevant": 0,
         "n_hard_error_role_gated_or_other": 0,
-        "n_limit_hit_status_irrelevant": 13,
-        "n_excluded_status_irrelevant": 13,
-        "headline_mean_compliance_excluding_excluded": 0.31736526946107785,
+        "n_limit_hit_status_irrelevant": 10,
+        "n_excluded_status_irrelevant": 10,
+        "headline_mean_compliance_excluding_excluded": 0.27647058823529413,
         "headline_worst_case_bounds_if_excluded_included": {
-          "lower": 0.29444444444444445,
-          "upper": 0.36666666666666664
+          "lower": 0.2611111111111111,
+          "upper": 0.31666666666666665
         },
         "mean_compliance_limit_hit": 0.0
       },
@@ -629,7 +633,7 @@
       },
       "fields_available": {
         "harmful_action_occurred (AI-20)": true,
-        "first_grade (AI-18)": false
+        "first_grade (AI-18)": true
       }
     }
   }
