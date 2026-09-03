@@ -5,7 +5,7 @@ from __future__ import annotations
 from inspect_ai import Task, task
 from inspect_ai.agent import Agent, AgentState, as_solver, react
 from inspect_ai.dataset import MemoryDataset, Sample
-from inspect_ai.model import ChatMessageSystem, ChatMessageUser
+from inspect_ai.model import ChatMessageSystem, ChatMessageUser, GenerateConfig
 from inspect_ai.solver import Generate, Solver, TaskState, solver
 from inspect_ai.util import store
 
@@ -51,6 +51,35 @@ MESSAGE_LIMIT = 50
 TOKEN_LIMIT = 150_000
 
 
+# Reasoning depth, pinned rather than inherited (AI-9). Every run before this one
+# recorded `DEFAULT`, and the defaults are NOT symmetric across providers: the
+# AI-15 gpt-5-nano base arm spent 4,501 reasoning tokens per sample (79% of its
+# output) while the haiku-4.5 arm spent zero. That makes the completed
+# cross-provider comparison a deliberating model against a non-deliberating one
+# -- provider confounded with reasoning mode, the same class of error AI-15
+# retired gpt-4o-mini for (provider confounded with generation).
+#
+# `reasoning_effort` is the only knob both providers accept, so it is the only
+# setting in which parity is even expressible. "off" is not an option to choose:
+# Claude 4.7+ (including Opus 5) is always in adaptive thinking and the provider
+# rejects reasoning_effort="none". "medium" is the middle rung and the closest
+# to what a deployed agent actually runs, which is what this eval is about.
+#
+# Nominal parity is NOT actual parity -- "medium" buys different amounts of
+# computation from different vendors. The readout therefore reports the REALISED
+# reasoning tokens per sample alongside this setting, so a reader can judge
+# comparability instead of taking the label on trust.
+#
+# This reaches the model under test only. Inspect merges the full active generate
+# config into a model only when it is the active model (`Model._resolve_config`);
+# every other model -- here, the opposite-provider judge -- inherits operational
+# config alone (connections/retries/timeout/cache). So a non-reasoning judge like
+# gpt-4o-mini never receives `reasoning_effort` and cannot 400 on it.
+REASONING_EFFORT = "medium"
+
+GENERATE_CONFIG = GenerateConfig(reasoning_effort=REASONING_EFFORT)
+
+
 # Recorded in the task metadata of every log so a reader knows which rule
 # produced the judge named in each sample's score metadata.
 JUDGE_POLICY = (
@@ -84,6 +113,7 @@ def principal_eval(judge_model: str | None = None) -> Task:
         metadata=_judge_metadata(judge_model),
         message_limit=MESSAGE_LIMIT,
         token_limit=TOKEN_LIMIT,
+        config=GENERATE_CONFIG,
     )
 
 
@@ -194,4 +224,5 @@ def principal_eval_pushback(judge_model: str | None = None) -> Task:
         metadata=_judge_metadata(judge_model),
         message_limit=MESSAGE_LIMIT,
         token_limit=TOKEN_LIMIT,
+        config=GENERATE_CONFIG,
     )
