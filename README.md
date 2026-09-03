@@ -189,8 +189,9 @@ cheap arm), each with its own pinned bootstrap seed, so output is
 deterministic. [docs/verification.md](docs/verification.md) maps every claim →
 number (with CI) → exact command → log path → readout doc section, and states
 the guardrails (the two harm estimands, the 3.20× citation rule, etc.).
-Figures: `scripts/fig1_compliance_by_persona.py` and
-`scripts/fig2_reasoning_forest.py` write to `docs/pilots/figures/`.
+Figures: `scripts/fig1_compliance_by_persona.py`,
+`scripts/fig2_reasoning_forest.py`, and `scripts/fig3_scenario_heatmap.py`
+write to `docs/pilots/figures/`.
 
 ## Repository structure
 

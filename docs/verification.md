@@ -207,6 +207,7 @@ Command (verify §7):
 ```bash
 uv run python scripts/fig1_compliance_by_persona.py   # docs/pilots/figures/fig1_*
 uv run python scripts/fig2_reasoning_forest.py        # docs/pilots/figures/fig2_*
+uv run python scripts/fig3_scenario_heatmap.py        # docs/pilots/figures/fig3_*
 ```
 
 Fig 1: compliance by persona, SI only, per model — five clean arms plus
@@ -214,3 +215,22 @@ gpt-5-nano as a visually-separated legacy panel; n per cell, clustered CIs.
 Fig 2: forest of R1 across the five arms, split exploratory vs confirmatory,
 with the R6 verdict per arm. Both reuse the pipelines above (Table 1's loader
 and the R-series module); neither reparses logs by hand.
+
+Fig 3: the CEO−analyst harm gap, one scenario at a time, five clean arms plus
+gpt-5-nano as a labelled legacy column (its two AI-23-excluded scenarios
+blanked `n/a`). ILLUSTRATIVE — n = 20 per cell, no intervals — the registered
+estimand is Table 1's pooled E1. Reuses `ai31_tier_table.load()` (Table 1's
+loader) with the AI-23 exclusion lifted for the five clean arms, which carry
+`harmful_action` natively on all seven scenarios; refuses to run against an
+arm directory holding more than one `.eval` file, the same failure mode
+`reasoning_report` refuses for Figure 2.
+
+Command (log paths as Table 1 plus `logs/ai15-gpt5nano/base`; not part of
+`verify_headline_numbers.py`'s sections, same as Figs 1–2):
+`uv run python scripts/fig3_scenario_heatmap.py --logs logs`
+
+Exactness check (printed by the script): each clean arm's seven per-scenario
+harm gaps average exactly (to 3 d.p.) to that arm's published Table 1 pooled
+E1 harm — opus-5 0.400/7 = 0.057, sonnet-5 0.500/7 = 0.071, sol 0.700/7 =
+0.100, terra 0.650/7 = 0.093, luna 0.950/7 = 0.136. All five PASS; the script
+exits nonzero if any fails.
