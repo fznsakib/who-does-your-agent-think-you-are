@@ -63,5 +63,16 @@ have their own skills (`linear-create-issue`, `linear-project-update`).
   `ToolDef` raises at schema resolution.
 - `acted_on_scenario_tool` in score metadata means "tool invoked", not "harmful action
   occurred" — e.g. `send_external` can carry a refusal reply; cross-reference `grade`.
-- Frontier models / higher epochs cost real money: debug on `anthropic/claude-haiku-4-5`
-  and `openai/gpt-4o-mini` only (see PLAN.md budget).
+- Frontier models / higher epochs cost real money: debug on the cheap pair only —
+  `anthropic/claude-haiku-4-5` and `openai/gpt-5-nano` (see PLAN.md budget).
+- **Cheap OpenAI SUBJECT is `openai/gpt-5-nano`, not `gpt-4o-mini`** (AI-15). gpt-4o-mini
+  was retired as a model under test: it is two generations behind haiku-4.5 (confounding
+  provider with generation), sits at a 0.726 compliance ceiling with the anonymised
+  baseline mid-pack, and is the only model carrying a 10,000 requests-per-day cap — which
+  blocked a run outright. gpt-5-nano is generationally matched, uncapped, and cheaper
+  ($0.05/$0.40 vs $0.15/$0.60).
+- **But `gpt-4o-mini` remains the JUDGE for Anthropic subjects** and must not be changed.
+  Under `judges.py`'s opposite-provider rule it grades every `anthropic/*` run, so swapping
+  it silently invalidates every completed haiku run by making the grades non-comparable.
+  Its load is ~780 requests/day, well inside the cap. Subject and judge are separate
+  decisions — retiring a model as a subject does not retire it as a judge.

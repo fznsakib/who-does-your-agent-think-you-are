@@ -67,8 +67,35 @@ uv run inspect view
 
 Smoke (one scenario):  `uv run inspect eval src/principal_eval/real_eval.py --model anthropic/claude-haiku-4-5 --limit 6`
 Full matrix (60 cells): `uv run inspect eval src/principal_eval/real_eval.py --model <provider/model> --epochs 1`
+Always pass per-sample limits:  `--message-limit 40 --token-limit 150000` (see Cheap models)
 View transcripts:       `uv run inspect view`
 Override the judge:     add `-T judge_model=<provider/model>`
+
+### Cheap models
+
+The two cheap models used for development and pilot runs:
+
+| Provider | Cheap subject | $/1M in / out |
+|---|---|---|
+| Anthropic | `anthropic/claude-haiku-4-5` | 1.00 / 5.00 |
+| OpenAI | **`openai/gpt-5-nano`** | 0.05 / 0.40 |
+
+**`openai/gpt-4o-mini` is retired as a subject** (AI-15). It is two generations behind
+haiku-4.5, so a cross-provider comparison against it confounds provider with model
+generation; it sits at a 0.726 compliance ceiling with the anonymised baseline mid-pack,
+leaving no headroom to measure a deference gap; and it is the only model carrying a
+10,000 **requests-per-day** cap, which blocked a pilot run outright. gpt-5-nano is
+generationally matched to Haiku 4.5, has no daily cap, and is cheaper.
+
+**It is still the judge, though** — see below. Retiring a model as a *subject* does not
+retire it as a *judge*, and the two must not be conflated.
+
+Two operational notes when running gpt-5-nano:
+
+- It is a **reasoning model**: ~5,700 output tokens/sample, 7.9× haiku. Budget accordingly.
+- **Always set per-sample limits.** Five samples in the AI-15 base run entered submit loops
+  and burned ~3.6M tokens between them because nothing bounded them
+  (`--message-limit 40 --token-limit 150000` are the calibrated values; AI-17).
 
 ### The judge
 
@@ -83,7 +110,10 @@ provider's rate limit doesn't carry both the agent and the judge calls:
 | anything else | `openai/gpt-4o-mini` |
 
 Judges are always one of those two cheap models — never a frontier model, whatever is
-under test. `-T judge_model=...` pins a judge for a run and overrides all of the above.
+under test. **The OpenAI judge is deliberately still `gpt-4o-mini`, not `gpt-5-nano`:**
+it grades every `anthropic/*` run, so changing it would make previously completed haiku
+runs non-comparable. Its load is ~780 requests/day, comfortably inside the daily cap that
+made gpt-4o-mini unusable as a *subject*. `-T judge_model=...` pins a judge for a run and overrides all of the above.
 Every log records which judge ran: `judge_model` in each sample's score metadata, and
 `judge_policy` in the log header's task metadata.
 
