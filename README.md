@@ -173,6 +173,25 @@ uv run inspect view
 
 The evaluation tasks enforce per-sample message and token limits.
 
+## Reproduce the application results
+
+Every headline number in the MATS write-up regenerates from the logs on disk
+with one command:
+
+~~~bash
+uv run python scripts/verify_headline_numbers.py
+~~~
+
+It wraps the committed readout pipelines (E-series confirmatory intervals,
+R-series reasoning gaps with their exploratory/confirmatory status, the
+descriptive tier table, the pairwise cross-model bootstrap, and the gpt-5-nano
+cheap arm), each with its own pinned bootstrap seed, so output is
+deterministic. [docs/verification.md](docs/verification.md) maps every claim →
+number (with CI) → exact command → log path → readout doc section, and states
+the guardrails (the two harm estimands, the 3.20× citation rule, etc.).
+Figures: `scripts/fig1_compliance_by_persona.py` and
+`scripts/fig2_reasoning_forest.py` write to `docs/pilots/figures/`.
+
 ## Repository structure
 
 ~~~text

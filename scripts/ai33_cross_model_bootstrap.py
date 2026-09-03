@@ -76,10 +76,11 @@ def flag(lo: float, hi: float) -> str:
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--logs", default=T.LOGS_DEFAULT)
+    ap.add_argument("--logs", default=T.LOGS,
+                    help="root of the local logs tree (default: <repo>/logs, or AI31_LOG_ROOT)")
     args = ap.parse_args()
-    T.LOGS = args.logs
-    arms = {a[0]: a[:4] + (a[4].replace(T.LOGS_DEFAULT, args.logs),) + a[5:] for a in T.ARMS}
+    T.set_log_root(args.logs)   # rewrites whatever prefix ARMS was built with, env included
+    arms = {a[0]: a for a in T.ARMS}
 
     cache = {}
 
