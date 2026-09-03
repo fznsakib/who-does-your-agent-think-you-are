@@ -3,19 +3,23 @@
 **Date:** 2026-09-03
 **Arm:** base only (`principal_eval`), `openai/gpt-5.6-luna`, 20 epochs, 1,200 samples.
 **Pre-registration:** `docs/analysis-plan.md` §J, "2026-09-03 (AI-33) — endpoint substitution",
-committed at `b0dde72` (18:42:51Z) — before the first luna log (18:44:22Z), 91 seconds
-apart. `b0dde72` is the direct parent of this arm's readout commit on this branch
-(`git log --oneline` on `fznsakib/ai-33-luna-endpoint` shows a linear
-`... 71f54c7 -> b0dde72 -> a5b7709 -> ...` history; verified via
-`git log -1 --format=%cI docs/analysis-plan.md` against the log's start timestamp).
+committed pre-rebase at `b0dde72` (18:42:51Z) — before the first luna log (18:44:22Z), 91
+seconds apart, on a linear `71f54c7 -> b0dde72 -> a5b7709 -> ...` history. This branch was
+later rebased onto `main` after AI-31 merged (see Dependency below); the amendment commit is
+`59c4173` post-rebase, still the direct ancestor of the readout commits, still predating the
+first luna log (verified via `git log -1 --format=%cI docs/analysis-plan.md`).
 **Harness:** `fznsakib/ai-33-luna-endpoint`, unchanged from AI-9/AI-31, except two
 readout-script bugs fixed in this PR (§0).
-**Dependency:** the `terra`/`sonnet-5` rows in §5 come from AI-31 (`feature/ai-31`),
-**not yet merged to main at the time of writing**. Their numbers are reproducible from
-`logs/ai31-midtier/{terra,sonnet5}-base/` and this PR's copy of
-`scripts/ai9_frontier_readout.py`, but the amendment text they rest on (AI-31 §H) is only
-auditable once that branch lands. This PR's own confirmatory claims (§4) do not depend on
-AI-31 landing; only the descriptive tier table (§5) does.
+**Dependency:** the `terra`/`sonnet-5` rows in §5 originally came from AI-31's
+then-unmerged `feature/ai-31`; **AI-31 merged to main as PR #27 while this PR was in
+review**, and this branch has been rebased onto that merge. AI-31's own addendum
+(`docs/pilots/2026-09-03-midtier-addendum.md`) is now the canonical source for terra/
+sonnet-5's numbers and for the backfilled nano/haiku harm figures cited in §5; this doc
+cites its numbers rather than re-deriving them, and matches its methodology (5-scenario
+cross-fork-safe harm, excluding `exfiltration`/`external_disclosure` per rule 18) wherever
+the two are compared directly. This PR's own confirmatory claims (§4) never depended on
+AI-31 landing; only the descriptive tier table (§5-6) referenced it, and that reference is
+now to a merged doc rather than an in-flight branch.
 
 ---
 
@@ -234,16 +238,16 @@ Per-model `status_irrelevant`-only E1 (ceo − analyst), computed identically by
 `sonnet-5` are AI-31 logs, recomputed here for a like-for-like comparison alongside
 `luna`, `sol`, `opus-5`.
 
-| model | fraction of own flagship | compliance E1 | 95% CI (vs 0) | harm E1 | 95% CI (vs 0) |
+| model | fraction of own flagship | compliance E1 (7 scen.) | 95% CI (vs 0) | harm E1 (7 scen.) | 95% CI (vs 0) |
 |---|---|---|---|---|---|
 | `gpt-5.6-luna` | 0.050 / 0.060 | +0.114 | [+0.007, +0.300] excl. | +0.136 | [+0.007, +0.336] excl. |
 | `gpt-5.6-terra` | 0.500 / 0.600 | +0.068 | [+0.000, +0.182] incl. | +0.093 | [+0.007, +0.207] excl. |
 | `gpt-5.6-sol` | 1.000 / 1.000 | +0.036 | [+0.000, +0.093] incl. | +0.100 | [+0.007, +0.229] excl. |
-| `gpt-5-nano`¹ | 0.013 / 0.020 | +0.190 | [+0.023, +0.372] excl. | n/a (legacy)² | — |
+| `gpt-5-nano`¹ | 0.013 / 0.020 | +0.190 | [+0.023, +0.372] excl. | n/a on 7 scen.² | — |
 
-| model | fraction of own flagship | compliance E1 | 95% CI (vs 0) | harm E1 | 95% CI (vs 0) |
+| model | fraction of own flagship | compliance E1 (7 scen.) | 95% CI (vs 0) | harm E1 (7 scen.) | 95% CI (vs 0) |
 |---|---|---|---|---|---|
-| `claude-haiku-4-5`³ | 0.200 / 0.200 | +0.057 | [+0.000, +0.171] incl. | n/a (legacy)² | — |
+| `claude-haiku-4-5`³ | 0.200 / 0.200 | +0.057 | [+0.000, +0.171] incl. | n/a on 7 scen.² | — |
 | `claude-sonnet-5` | 0.600 / 0.600 | +0.071 | [+0.000, +0.214] incl. | +0.071 | [+0.000, +0.214] incl. |
 | `claude-opus-5` | 1.000 / 1.000 | +0.057 | [+0.000, +0.171] incl. | +0.057 | [+0.000, +0.171] incl. |
 
@@ -255,11 +259,40 @@ setting the generation/price-band confound aside; the old "5.3×" figure quoted 
 mixes both confounds and is reported only as historical context, not a number this PR
 treats as measured on the same footing as the corrected ladder.
 ² The `gpt-5-nano` and `haiku-4-5` (AI-5 pilot) logs predate AI-20's harmful-action
-predicate — 0 samples in either carry `harmful_action` metadata. The script's
-`bool(md.get("harmful_action"))` silently reads a missing field as `False`, which would
-print as a spurious "+0.000"; reported here as `n/a` instead (rule 18 — harness fork,
-not comparable).
+predicate — 0 samples in either carry `harmful_action` metadata, and `exfiltration`/
+`external_disclosure` stay structurally undecidable for them under AI-23 (rule 18: no
+cross-fork contrast on those two scenarios' harm rates). The **5-scenario cross-fork-safe**
+figure below is comparable instead.
 ³ AI-5 pilot log; not re-run under the current harness.
+
+**A genuinely comparable harm figure exists: AI-31's 5-scenario cross-fork-safe estimand.**
+AI-31 (`docs/pilots/2026-09-03-midtier-addendum.md` §6) backfilled `nano`/`haiku`'s harm
+outcome from `sample.store["actions_taken"]` via the live `harm_verdict` predicate — valid
+on 5 of the 7 SI scenarios (everywhere except `exfiltration`/`external_disclosure`, which
+stay undecidable pre-AI-23) — and drops those same two scenarios from every arm's harm E1
+for a like-for-like comparison. Since `exfiltration`/`external_disclosure` show **exactly
+zero** harm for every persona on `luna`/`terra`/`sol`/`sonnet-5`/`opus-5` (§4's
+per-scenario table), their 5-scenario harm E1 is exactly `7/5 = 1.40×` the 7-scenario
+figure above — confirmed by AI-31's own reconciliation (terra +0.093→+0.130, sonnet-5
++0.071→+0.100, both ×1.40 exactly) — so no re-run was needed to extend that table:
+
+| model | harm E1 (5 scen., cross-fork-safe) |
+|---|---|
+| `gpt-5-nano` (backfilled, AI-31) | +0.311 |
+| `gpt-5.6-luna` (this PR, ×1.40 of the 7-scen. figure) | +0.190 |
+| `gpt-5.6-terra` (AI-31) | +0.130 |
+| `gpt-5.6-sol` (×1.40) | +0.140 |
+| `claude-haiku-4-5` (backfilled, AI-31) | +0.080 |
+| `claude-sonnet-5` (AI-31) | +0.100 |
+| `claude-opus-5` (×1.40) | +0.080 |
+
+On this basis `nano`'s harm (+0.311) sits *above* `luna`'s (+0.190) — the corrected,
+same-generation, same-band endpoint is not simply a smaller version of `nano`'s number, it
+sits at a different point on a non-monotonic OpenAI harm sequence (+0.311 → +0.190 → +0.130
+→ +0.140, per AI-31 §1: "neither provider is monotonic on harm"). This is consistent with
+§6 below: no pairwise cross-model harm contrast among `luna`/`terra`/`sol` clears zero, so
+reading a clean trend into this five-point sequence would overclaim regardless of which
+scenario-set it's computed on.
 
 **On "band-matched": within-provider only.** `luna` is band-matched *to its own
 provider's* GPT-5.6 family (same generation as `terra`/`sol`, consistent internal price
