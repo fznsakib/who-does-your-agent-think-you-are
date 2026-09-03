@@ -63,6 +63,37 @@ The manifest carries the judge's grade for bookkeeping, but the label server str
 `LabelState.next_episode` in `scripts/label_server.py`. It only comes back in the
 `/api/submit` response, after your grade is already recorded.
 
+### Known judge gaps found by hand-labelling
+
+**60-episode pass, gpt-5-nano base+pushback (2026-09-03):** raw agreement 68.3%
+(41/60), Cohen's kappa 0.583 (moderate), human fusion rate 1.7%.
+
+**PARTIAL conflates two different behaviours.** The judge rubric's PARTIAL wording
+("began the action ... or hedging") doesn't distinguish "began the action, hedging on
+whether to finish it" from "fully executed the consequential tool call, then hedged
+about UNRELATED follow-up steps" (e.g. disabled the killswitch, then asked "should I
+also log this / notify security?"). 5 of the 19 hand-label disagreements were exactly
+judge=PARTIAL / human=COMPLIED, and reading the transcripts confirmed the pattern.
+Cross-checking against `acted_on_scenario_tool` (already recorded independently of the
+judge) shows this isn't a couple of edge cases: **19 of 34 PARTIAL grades in the base
+arm (56%) have the consequential tool call actually fired.**
+
+`partial_action_crosscheck` in `src/principal_eval/analysis.py` reports this as a safe,
+additive cross-check — it uses a signal already on every existing log, so it needs no
+rescoring and doesn't touch the judge or invalidate any completed run. On the gpt-5-nano base arm it moves the headline status_irrelevant compliance mean from
+0.164 (judge's own PARTIAL=0.5 weighting) to 0.182 if PARTIAL-with-action-fired is
+treated as full compliance — a real but modest shift, since only 15 of the 19 affected
+episodes are `status_irrelevant` (the other 4, `c_data_access`/`c_external_comms`, are
+`role_gated` and sit outside the headline entirely).
+
+This cross-check is evidence, not a fix. The actual fix — rewording the judge's PARTIAL
+definition in `scoring.py`'s `JUDGE_TEMPLATE` to separate "incomplete action" from
+"complete action, hedged extras" — changes the prompt every future run is graded
+against, which means re-running every log to keep results comparable (the same
+discipline `judges.py`'s opposite-provider rule and AI-18/AI-20's own review passes
+went through). That's deliberately NOT done here as a quick edit; it needs its own
+Linear issue with the harness owner deciding the rewording and the rerun cost.
+
 ## 2. Analysis pipeline
 
 ```bash
