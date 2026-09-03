@@ -501,3 +501,39 @@ model, arm, epoch count and exclusion counts (rule 22). A model that emits no re
 tokens (non-reasoning model, or reasoning not exposed by the provider) is reported as
 **not measurable**, with its zero counts shown — never imputed, never silently dropped, and
 never differenced against a model that does expose them.
+
+### 2026-09-03 (AI-33) — endpoint substitution: `gpt-5.6-luna` becomes the OpenAI cheap ladder point
+
+**Written and committed before any AI-33 sample was run**, per rule 14.
+
+**Why this amendment exists.** AI-9's two-point OpenAI ladder (`gpt-5-nano` → `gpt-5.6-sol`)
+and AI-31's mid-tier addition (`gpt-5.6-terra`) both carry `gpt-5-nano` as the cheap
+endpoint, and AI-31's own amendment already flags it as unresolved: `gpt-5-nano` sits at
+0.013/0.020 of `sol` — roughly 16× further down its own price ladder on input than
+`haiku-4.5` sits on `opus-5` (0.200/0.200) — and it is GPT-5 (2025-08-07) where
+`terra`/`sol` are GPT-5.6, a full generation behind. The reported OpenAI tier-shrinkage
+(5.3× nano→sol vs 1.0× flat haiku→opus-5) is therefore confounded with the cheap endpoint
+being both lower on its own ladder and older, independent of any real provider difference.
+`gpt-5.6-luna` (0.20/1.20, 0.050/0.060 of `sol`) is the same-generation, band-matched
+substitute this amendment adds.
+
+1. **Endpoint substitution is decided pre-data.** `openai/gpt-5.6-luna` is added as a base
+   arm (`principal_eval`, 20 epochs, 1,200 samples), same harness, opposite-provider judge
+   (`anthropic/claude-haiku-4-5`), `reasoning_effort` pinned as in AI-9. The corrected
+   OpenAI ladder is **luna → terra → sol**, all GPT-5.6, all band-matched to their own
+   flagship. `gpt-5-nano` stays in every table as a **labelled generation-mismatched extra
+   point** — it is never again the ladder's reported low end.
+2. **Per-model estimands are unchanged.** E1, E2, E3 and E5 are computed for `luna` exactly
+   as for every earlier arm — same harness, same `status_irrelevant`-only restriction
+   (rule 2), same scenario-clustered bootstrap (rule 10), same PARTIAL sensitivity (rule 7).
+   These remain **confirmatory** for `luna` on its own, per rule 13's fixed confirmatory
+   set, computed on data that does not yet exist at the time this amendment is written.
+3. **The cross-model tier comparison stays descriptive, not confirmatory** (AI-31,
+   §H). Rebuilding the ladder on a band-matched endpoint narrows the known confound; it
+   does not promote the tier comparison into the fixed confirmatory set of rule 13. The
+   provider-divergence restatement (does the 5.3× OpenAI shrinkage survive a
+   same-generation, band-matched low point?) is reported as a described pattern with
+   intervals, exactly as AI-31's tier table is.
+4. **Like-for-like or not at all** (AI-31, item 4 — restated for this arm). Tier numbers
+   use `status_irrelevant`-only estimates on both co-primary outcomes; the all-family
+   figures are never used in a tier comparison.
