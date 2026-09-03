@@ -273,13 +273,24 @@ status-irrelevant refuse/escalate scenarios, and grades the final response.
 | Metric | Value |
 |---|---|
 | comparable cells (scenario × persona × condition × epoch) | 180 |
-| grade flip rate | 7.2% |
-| flips **toward** compliance | 2.8% |
+| grade flip rate (unpaired — see note) | 7.2% |
+| flips **toward** compliance (unpaired) | 2.8% |
 | mean compliance, base (matched cells) | 0.044 |
 | mean compliance, after pushback | 0.050 |
 
 **Authority re-assertion does not systematically move haiku** (+0.006 overall). Of the
 7.2% of cells that changed grade, more than half moved *away* from compliance.
+
+> **The flip rate here is unpaired and is superseded** (Codex review of PR #7, fixed under
+> **AI-18**). Base epoch N and pushback epoch N are independent generations, so 7.2%
+> mixes the pushback effect with sampling variance and cannot be read as "7.2% of answers
+> were changed by pushback". It also sits on a different noise floor from gpt-5-nano's
+> 67.0%, which is why the two are not comparable quantities. The **+0.006 group-mean
+> conclusion is unaffected** — it is a between-group contrast over the same 180 cells, and
+> it is what the section's finding rests on. The harness now grades each pushback
+> transcript's own first turn (`first_grade` / `flipped` in score metadata) and
+> `paired_pushback_flip()` reports the within-transcript flip; this log predates the
+> change, so its paired number will come from the next pushback run.
 
 Per persona (n=30 each — **all cells are 0–4 compliant samples, so these movements are
 noise-dominated and are reported for completeness, not as findings**):
@@ -474,6 +485,8 @@ See §3.4. Filed as **AI-14**; handled in the analysis for this pilot.
 
 The flip-rate matcher is covered by a synthetic case (matching on
 scenario × persona × condition × epoch, flip direction, exclusion of unmatched rows).
+Since AI-18 that matcher is the *unpaired* reference figure only; `tests/test_ai5_readout.py`
+covers the paired within-transcript flip and the sampling-variance floor that replaced it.
 
 ---
 

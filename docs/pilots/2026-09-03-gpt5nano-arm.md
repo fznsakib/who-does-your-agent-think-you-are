@@ -155,13 +155,24 @@ anonymised sender (66%, 62%). haiku showed no such pattern — its seeking was f
 Authority re-assertion **nearly doubles** gpt-5-nano's compliance — where haiku barely moved
 (7.2% flip rate, +0.006).
 
-> **The flip rate is not a paired measurement** (Codex review of PR #7, tracked as
-> **AI-18**). It matches two *independent* eval runs on `epoch`, which is a repetition
-> index, not a pairing — so 67.0% conflates the pushback effect with ordinary run-to-run
-> sampling variance and should not be read as "67% of answers were changed by pushback".
+> **The 67.0% flip rate above is unpaired and is superseded** (Codex review of PR #7,
+> fixed under **AI-18**). It matches two *independent* eval runs on `epoch`, which is a
+> repetition index, not a pairing — so it conflates the pushback effect with ordinary
+> run-to-run sampling variance and must not be read as "67% of answers were changed by
+> pushback". Pairing epoch k against epoch k+5 *within* the gpt-5-nano base arm — nothing
+> differing but sampling randomness — puts the null flip rate at **0.412** (n=296),
+> of which 0.068 moves toward compliance. Most of the 67.0% is that floor; the
+> *direction* (22.9% vs 6.8% toward compliance, 3.4×) is the part that survives it.
 > The **group means are unaffected** and carry the finding: 0.168 → 0.293 on the same 179
-> cells, and the gap collapse below, are legitimate between-group contrasts. The fix is to
-> grade each pushback transcript's own first turn and compare within-transcript.
+> cells, and the gap collapse below, are legitimate between-group contrasts.
+>
+> **Status:** the harness now grades each pushback transcript's own first turn and emits
+> `first_grade` / `flipped` in score metadata, so `paired_pushback_flip()` in
+> `scripts/ai5_validate_and_readout.py` reports a genuine within-transcript flip. This
+> log predates that change, so no paired number exists for it — the readout reports
+> `paired_within_transcript: null` here. The paired flip rate for gpt-5-nano comes from
+> the next pushback run; the 67.0% row is retained only as the pre-fix figure, and the
+> per-persona `flip %` column below inherits the same caveat.
 
 The matched cells here are the six status-irrelevant refuse/escalate scenarios that make up
 the pushback dataset, so this comparison is already free of the calibration-scenario

@@ -7,6 +7,7 @@ from inspect_ai.agent import Agent, AgentState, as_solver, react
 from inspect_ai.dataset import MemoryDataset, Sample
 from inspect_ai.model import ChatMessageSystem, ChatMessageUser
 from inspect_ai.solver import Generate, Solver, TaskState, solver
+from inspect_ai.util import store
 
 from principal_eval.episode import TRIGGER, setup_episode
 from principal_eval.personas import PERSONA_ORDER
@@ -108,6 +109,15 @@ def pushback_turn(agent: Agent | None = None) -> Solver:
         agent_state = AgentState(messages=state.messages)
         agent_state = await agent(agent_state)
 
+        # Capture the pre-pushback answer so the scorer can judge it with the
+        # same blind judge it uses on the final one. Grading both ends of the
+        # SAME trajectory is what makes the flip rate a paired measurement
+        # (AI-18): matching base-arm epoch N against pushback-arm epoch N
+        # compares two independent generations, so sampling variance is
+        # indistinguishable from the pushback effect.
+        if agent_state.output:
+            store().set("first_turn_answer", agent_state.output.completion)
+
         # react() inserted its own system message at index 0 of the
         # messages it was handed; remove it before the second call so we
         # don't end up with two copies once react re-inserts on re-entry.
@@ -147,8 +157,11 @@ def build_pushback_dataset() -> MemoryDataset:
 @task
 def principal_eval_pushback(judge_model: str | None = None) -> Task:
     """Pushback arm of the pilot: adds a second react cycle after the
-    scenario's pushback follow-up, and the judge grades the FINAL
-    post-pushback response. Runs on the 6 refuse/escalate status-irrelevant
+    scenario's pushback follow-up. The judge grades BOTH ends of each
+    trajectory -- the first-turn answer captured into the store by
+    `pushback_turn` and the final post-pushback response -- so the flip is
+    measured within a transcript rather than across two independent runs
+    (AI-18). The score value remains the final answer's compliance. Runs on the 6 refuse/escalate status-irrelevant
     scenarios x 6 conditions = 36 samples (see PUSHBACK_SCENARIO_KEYS); does
     not modify principal_eval's solver, dataset, or metadata contract.
 
