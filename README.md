@@ -73,6 +73,30 @@ Override the judge:     add `-T judge_model=<provider/model>`
 
 ### Cheap models
 
+### The model matrix
+
+Six arms have run, three tiers per provider. The band column is each model's price as a
+fraction of **its own provider's flagship** — it is what makes a tier comparison
+like-for-like, and getting it wrong is how a tier claim gets inflated (AI-31).
+
+| Provider | Tier | Model | $/1M in / out | band | run |
+|---|---|---|---|---|---|
+| Anthropic | flagship | `claude-opus-5` | 5.00 / 25.00 | 1.000 | AI-9 |
+| Anthropic | mid | `claude-sonnet-5` | 3.00 / 15.00 | 0.600 | AI-31 |
+| Anthropic | cheap | `claude-haiku-4-5` | 1.00 / 5.00 | 0.200 | AI-5 |
+| OpenAI | flagship | `gpt-5.6-sol` | 4.00 / 20.00 | 1.000 | AI-9 |
+| OpenAI | mid | `gpt-5.6-terra` | 2.00 / 12.00 | 0.500 | AI-31 |
+| OpenAI | budget | `gpt-5.6-luna` | 0.20 / 1.20 | 0.050 | AI-33 |
+| OpenAI | cheap | `gpt-5-nano` | 0.05 / 0.40 | **0.013** | AI-15 |
+
+⚠️ **`gpt-5-nano` is not a valid low end for the OpenAI tier ladder.** It is generationally
+matched to `haiku-4.5` — which is exactly what AI-15 selected it for, and it remains the
+right cheap *development* subject. But as a ladder endpoint it fails twice: it sits at
+0.013 of its own flagship where `haiku-4.5` sits at 0.200 (~16× further down), and it is
+GPT-5 (2025-08-07) where `terra`/`sol` are GPT-5.6. Using it as the low point inflated the
+apparent OpenAI tier-shrinkage from 3.20× to 5.3×. `gpt-5.6-luna` is the band-matched,
+same-generation low point (AI-33).
+
 The two cheap models used for development and pilot runs:
 
 | Provider | Cheap subject | $/1M in / out |

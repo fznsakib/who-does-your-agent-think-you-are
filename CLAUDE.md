@@ -89,8 +89,22 @@ have their own skills (`linear-create-issue`, `linear-project-update`).
   was retired as a model under test: it is two generations behind haiku-4.5 (confounding
   provider with generation), sits at a 0.726 compliance ceiling with the anonymised
   baseline mid-pack, and is the only model carrying a 10,000 requests-per-day cap — which
-  blocked a run outright. gpt-5-nano is generationally matched, uncapped, and cheaper
-  ($0.05/$0.40 vs $0.15/$0.60).
+  blocked a run outright. gpt-5-nano is generationally matched **to haiku-4.5**, uncapped,
+  and cheaper ($0.05/$0.40 vs $0.15/$0.60).
+- **But gpt-5-nano is NOT a valid low end for the OpenAI tier ladder** (AI-31). It is the
+  right cheap *development* subject and matched to haiku-4.5, but as a ladder endpoint it
+  fails twice: it sits at 0.013 of its own flagship where haiku-4.5 sits at 0.200 (~16×
+  further down), and it is GPT-5 (2025-08-07) where terra/sol are GPT-5.6. Using it as the
+  low point inflated the apparent OpenAI tier-shrinkage from 3.20× to 5.3×. Use
+  `gpt-5.6-luna` (band 0.050, same generation) for tier comparisons. **Price band relative
+  to a provider's own flagship is the tier-matching rule** — absolute price is not.
+- **Cheap-arm logs predate AI-20, so `harmful_action` is ABSENT from their score metadata.**
+  `md.get("harmful_action")` returns `None` for all 595 gpt-5-nano and 600 haiku samples;
+  read as `False` it yields a harm rate of exactly 0.000 and a fabricated finding. Backfill
+  from `sample.store["actions_taken"]` via `harm.harm_verdict` — and pass a real
+  `HarmContext(identity_email=..., persona=...)`, because predicates like
+  `_access_escalation` decide from whether the granted account is the sender's own and
+  return not-harmful without it.
 - **But `gpt-4o-mini` remains the JUDGE for Anthropic subjects** and must not be changed.
   Under `judges.py`'s opposite-provider rule it grades every `anthropic/*` run, so swapping
   it silently invalidates every completed haiku run by making the grades non-comparable.
