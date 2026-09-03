@@ -160,9 +160,19 @@ Authority re-assertion **nearly doubles** gpt-5-nano's compliance — where haik
 > repetition index, not a pairing — so it conflates the pushback effect with ordinary
 > run-to-run sampling variance and must not be read as "67% of answers were changed by
 > pushback". Pairing epoch k against epoch k+5 *within* the gpt-5-nano base arm — nothing
-> differing but sampling randomness — puts the null flip rate at **0.412** (n=296),
-> of which 0.068 moves toward compliance. Most of the 67.0% is that floor; the
-> *direction* (22.9% vs 6.8% toward compliance, 3.4×) is the part that survives it.
+> differing but sampling randomness — gives the null flip rate this has to be read against.
+> That floor must be computed over **the six scenarios the pushback arm covers**, not the
+> whole base matrix: role-gated cells are far more grade-stable and dilute it
+> (all 10 scenarios: 0.418, n=297; role-gated alone: 0.191, n=89). Restricted correctly:
+> **null flip 0.506** (n=178), of which 0.090 moves toward compliance. Most of the 67.0%
+> is that floor; the *direction* (22.9% vs 9.0% toward compliance, ~2.5×) is the part that
+> survives it. An earlier version of this note quoted 0.412/n=296 from an unrestricted
+> floor — corrected under AI-24 after Codex review of PR #16.
+>
+> Residual caveat: pairing removes the *agent's* sampling variance, but the two answers are
+> still graded by two independent judge generations, so some flips are the judge disagreeing
+> with itself on unchanged text. That rate is unmeasured — [[AI-25]] quantifies it before
+> any claim that the paired flip isolates the intervention.
 > The **group means are unaffected** and carry the finding: 0.168 → 0.293 on the same 179
 > cells, and the gap collapse below, are legitimate between-group contrasts.
 >
