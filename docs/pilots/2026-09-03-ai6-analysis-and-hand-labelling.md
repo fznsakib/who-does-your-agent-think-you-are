@@ -96,24 +96,37 @@ row-level bootstrap would understate every interval.
 
 ### Reconciling with sibling PRs
 
-Four sections read metadata fields that don't exist in `logs/` yet because the PRs that
-add them (AI-16 fusion, AI-17 sample disposition, AI-18 paired pushback, AI-20 harmful
-action) hadn't merged when this was built. Each one probes a list of candidate key names
-and reports `"available": false` with a reason instead of guessing:
+This was built before AI-16/17/18/20/21/24 landed, against guessed metadata field names.
+**Reconciled 2026-09-03** once AI-16/17/18/21/24 actually merged — none of the guesses
+were quite right, which is exactly why this was built parameterized rather than wired in
+directly:
 
-```python
-FUSION_KEYS = ("identity_fusion_detected", "fusion_detected", "identity_fusion")
-HARMFUL_ACTION_KEYS = ("harmful_action_occurred",)
-PAIRED_PUSHBACK_KEYS = ("first_turn_grade", "pre_pushback_grade", "paired_first_turn_grade")
-DISPOSITION_KEYS = ("disposition", "sample_disposition")
-```
+- **AI-16 (fusion)** didn't add score metadata at all. `fusion.fusion_flag` is a
+  standalone reviewed function over assistant text (AI-16 also shipped its own readout,
+  `scripts/ai16_fusion_readout.py` / `docs/pilots/2026-09-03-fusion-readout.md`, with the
+  first real numbers: haiku 22.5% of whoami-callers fused, gpt-5-nano 0%). `ai6_analysis.py`
+  calls `fusion_flag` directly on each sample's transcript in `load_rows`, so
+  `fusion_robustness` is always computed rather than gated behind `"available"`.
+- **AI-17 (runaway-loop bounding)** didn't add a disposition metadata key either — it
+  bounds samples with `message_limit`/`token_limit` on the `Task`, and Inspect's own
+  `sample.limit` (an `EvalSampleLimit`) marks a hit. Per `real_eval.py`'s own comment, a
+  limit hit "yields a normal limit/limit_reason-tagged sample" that's still gradeable, so
+  it's counted in the headline like any other row — `nonterminating_report` only surfaces
+  it (`n_limit_hit_status_irrelevant`, its own mean compliance) for transparency. The
+  worst-case-bounds treatment is reserved for the OTHER disposition: a hard `sample.error`
+  with no score at all, which is the only kind possible in the current gpt-5-nano/haiku
+  logs (they predate AI-17).
+- **AI-18 (paired pushback)** stores the first-turn grade as `first_grade` in score
+  metadata, not `first_turn_grade` — fixed in `PAIRED_PUSHBACK_KEYS`.
+- **AI-20 (harmful_action_occurred)** still hasn't merged, so `harmful_action_rates`
+  correctly still reports `"available": false`. `HARMFUL_ACTION_KEYS` stays a probe for
+  when it does.
 
-Once a PR merges, check its actual field name against these lists in
-`src/principal_eval/ai6_analysis.py` and `src/principal_eval/ai6_sampling.py` — fix the
-tuple if the real name differs, nothing else. No plumbing changes needed elsewhere; the
-tests in `tests/test_ai6_analysis.py` cover the None-vs-present behaviour of each section
-directly with synthetic rows, so a wrong key name shows up as a still-`available: false`
-result rather than a silent miscalculation.
+The lesson: even "parameterize now, reconcile later" needs the reconciliation pass done
+by hand against the real diff, not assumed correct because the tests pass — the tests
+only proved the None-vs-present *branches* worked, not that the guessed key *names*
+would ever match. See the module docstring in `src/principal_eval/ai6_analysis.py` for
+the up-to-date field mapping.
 
 ### Sanity-check helpers
 
