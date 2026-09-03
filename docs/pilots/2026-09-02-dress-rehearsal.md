@@ -382,7 +382,11 @@ frontier pilot in *requests per day*, not just tokens:
   per sample;
 - the two-model frontier volume sends **5,372 requests to OpenAI** under the current judge
   design (960 for opus-5 + 4,412 for gpt-5), falling to **4,412** once **AI-11** moves each
-  judge to the opposite provider. The remaining calls go to Anthropic and do not touch this
+  judge to the opposite provider. **Since AI-18 add 360 judge requests per model**: the
+  paired scorer grades both ends of every pushback transcript, so a pushback sample costs
+  two judge calls, taking opus-5 to 1,320 and gpt-5 to 4,772 (`ai5_frontier_projection.py`
+  now budgets this). The cost effect is negligible (+$0.03 per model, judge tokens are
+  ~0.1% of spend); the requests-per-day effect is not, which is the point of the budget. The remaining calls go to Anthropic and do not touch this
   quota. That is comfortably inside 10,000/day *before retries* — the danger is retries,
   which is what actually exhausted it here.
 

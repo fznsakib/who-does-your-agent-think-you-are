@@ -36,6 +36,14 @@ PUSHBACK_AGENT_MULTIPLIER = 1.63
 # the readout claimed 6.5, which was wrong in the other direction.
 PUSHBACK_AGENT_REQS_PER_SAMPLE = 4.59
 
+# Since AI-18 the scorer grades BOTH ends of a pushback transcript - the
+# captured first-turn answer and the final one - so a pushback sample costs two
+# judge requests and two sets of judge tokens, not one. Budgeting one understates
+# judge load on the pushback arm by 100%, and the requests-per-day headroom that
+# gates a frontier run with it.
+PUSHBACK_JUDGE_REQS_PER_SAMPLE = 2
+PUSHBACK_JUDGE_TOKEN_MULTIPLIER = 2.0
+
 # ---- pilot volume (the originally specified epochs=10 matrix) ---------------
 BASE_SAMPLES = 60 * 10        # 60-cell matrix x 10 epochs
 PUSHBACK_SAMPLES = 36 * 10    # 36-cell pushback matrix x 10 epochs
@@ -65,15 +73,21 @@ def sample_profile(kind: str) -> dict:
     # two react cycles produce; request count scales with how many tool-call iterations
     # they take. Using the token multiplier for both understates the request totals
     # that the requests-per-day budget depends on, so they are measured separately.
-    tok_mult = PUSHBACK_AGENT_MULTIPLIER if kind == "pushback" else 1.0
-    reqs = PUSHBACK_AGENT_REQS_PER_SAMPLE if kind == "pushback" else AGENT_REQS_PER_SAMPLE
+    pushback = kind == "pushback"
+    tok_mult = PUSHBACK_AGENT_MULTIPLIER if pushback else 1.0
+    reqs = PUSHBACK_AGENT_REQS_PER_SAMPLE if pushback else AGENT_REQS_PER_SAMPLE
+    # the paired scorer's second judge call is a request AND a second set of
+    # judge tokens: the prompt template is the same and only the response text
+    # differs, so x2 on both is the right first-order estimate
+    judge_tok_mult = PUSHBACK_JUDGE_TOKEN_MULTIPLIER if pushback else 1.0
+    judge_reqs = PUSHBACK_JUDGE_REQS_PER_SAMPLE if pushback else JUDGE_REQS_PER_SAMPLE
     return {
         "agent_in": AGENT_IN_PER_SAMPLE * tok_mult,
         "agent_out": AGENT_OUT_PER_SAMPLE * tok_mult,
-        "judge_in": JUDGE_IN_PER_SAMPLE,
-        "judge_out": JUDGE_OUT_PER_SAMPLE,
+        "judge_in": JUDGE_IN_PER_SAMPLE * judge_tok_mult,
+        "judge_out": JUDGE_OUT_PER_SAMPLE * judge_tok_mult,
         "agent_reqs": reqs,
-        "judge_reqs": JUDGE_REQS_PER_SAMPLE,
+        "judge_reqs": judge_reqs,
     }
 
 
@@ -144,10 +158,11 @@ def main() -> None:
               f"-> {r['rpm_floor_min_fixed']:6.1f} min floor @ {OPENAI_RPM} RPM")
 
     print("\nAssumptions: frontier output tokens x%.1f and input x%.1f vs measured haiku "
-          "rates; pushback agent cost x%.1f (two react cycles); judge stays "
+          "rates; pushback agent cost x%.1f (two react cycles); pushback judge cost and "
+          "requests x%.1f (AI-18 grades both ends of the transcript); judge stays "
           "gpt-4o-mini in the cost model; USD->GBP %.2f."
           % (FRONTIER_OUTPUT_MULTIPLIER, FRONTIER_INPUT_MULTIPLIER,
-             PUSHBACK_AGENT_MULTIPLIER, gbp))
+             PUSHBACK_AGENT_MULTIPLIER, PUSHBACK_JUDGE_TOKEN_MULTIPLIER, gbp))
 
 
 if __name__ == "__main__":
