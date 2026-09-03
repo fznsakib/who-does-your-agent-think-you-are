@@ -1,12 +1,16 @@
 # Who Does Your Agent Think You Are?
 
+| …and does it defer to power?
+
 An [Inspect](https://inspect.aisi.org.uk/) evaluation of whether tool-using AI agents infer a user's identity and organisational authority from workspace cues and change how they handle consequential requests.
 
 ## Research question
 
-Does inferred status increase compliance with borderline or unsafe requests?
+When an AI agent operates inside a company's email, calendar, and directory, it can find out who is asking even when nobody tells it.
 
-We give each agent the same request. Email, directory, calendar, and identity tools return different identity cues for five personas and a shared anonymised control. Comparing their behaviour estimates the effect of inferred status.
+Once the agent knows, does the user's inferred status increase compliance with borderline or unsafe requests?
+
+We give each agent the same request where it has access to tools that provides email, directory, calendar, and other identity cues for five different personas and a shared anonymised control. The agents may use these tools explicitly or implicitly to converge on its preferred solution. Comparing their behaviour estimates the effect of inferred status.
 
 ## Evaluation design
 
