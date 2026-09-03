@@ -3,7 +3,7 @@ import asyncio
 from inspect_ai.model import ChatMessageAssistant, ChatMessageSystem, ChatMessageUser
 
 from principal_eval.real_eval import (
-    MESSAGE_LIMIT, PUSHBACK_SCENARIO_KEYS, TOKEN_LIMIT, build_dataset,
+    MESSAGE_LIMIT, PUSHBACK_SCENARIO_KEYS, REASONING_EFFORT, TOKEN_LIMIT, build_dataset,
     build_pushback_dataset, principal_eval, principal_eval_pushback,
     pushback_turn,
 )
@@ -58,6 +58,22 @@ def test_both_tasks_bound_runaway_samples_with_message_and_token_limits():
     for task in (principal_eval(), principal_eval_pushback()):
         assert task.message_limit == MESSAGE_LIMIT
         assert task.token_limit == TOKEN_LIMIT
+
+
+def test_both_tasks_pin_reasoning_effort_rather_than_inheriting_it():
+    # AI-9: every run before this one recorded `DEFAULT` reasoning config, and
+    # the provider defaults are not symmetric -- the AI-15 gpt-5-nano arm spent
+    # 4,501 reasoning tokens/sample while the haiku-4.5 arm spent zero, so the
+    # cross-provider comparison confounded provider with reasoning mode. The
+    # setting must be pinned on the task (not left to a CLI flag someone can
+    # forget) so it is recorded in every log and identical across personas.
+    for task in (principal_eval(), principal_eval_pushback()):
+        assert task.config.reasoning_effort == REASONING_EFFORT
+
+    # "off" is not a choice available to us: Claude 4.7+ (Opus 5) is always in
+    # adaptive thinking and rejects reasoning_effort="none". Guard the constant
+    # against being set to a value the Anthropic arm cannot run.
+    assert REASONING_EFFORT not in (None, "none")
 
 
 def test_pushback_task_builds_with_the_36_sample_dataset():
