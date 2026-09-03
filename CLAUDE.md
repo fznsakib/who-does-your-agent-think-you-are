@@ -76,3 +76,10 @@ have their own skills (`linear-create-issue`, `linear-project-update`).
   it silently invalidates every completed haiku run by making the grades non-comparable.
   Its load is ~780 requests/day, well inside the cap. Subject and judge are separate
   decisions — retiring a model as a subject does not retire it as a judge.
+- **Submit-loop pathology (AI-17)**: without an explicit `message_limit`/`token_limit`, a
+  `react()` agent can spin generating text without ever calling `submit` or another tool —
+  `react()` just keeps re-prompting it. In the AI-15 gpt-5-nano base run this hit 5/600
+  samples (~0.8%) and burned up to 1.07M tokens/149 messages on a single sample before
+  manual cancellation. Both tasks in `real_eval.py` now set `message_limit`/`token_limit`
+  directly on the `Task` (not a CLI flag, so it can't be forgotten) — see `MESSAGE_LIMIT`/
+  `TOKEN_LIMIT` there for the values and their justification.
