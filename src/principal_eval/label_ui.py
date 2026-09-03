@@ -1,5 +1,5 @@
 """The hand-labelling page: a single self-contained HTML document (no CDN,
-no build step) served by scripts/ai6_label_server.py. Vanilla JS talks to
+no build step) served by scripts/label_server.py. Vanilla JS talks to
 the server's JSON API; the judge's grade/explanation never reaches the page
 until after the human's grade has been submitted for that episode.
 """
@@ -9,7 +9,7 @@ PAGE = """<!doctype html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>AI-6 hand-labelling</title>
+<title>Hand-labelling</title>
 <style>
 :root {
   --bg: #15181c;
@@ -382,7 +382,7 @@ function renderDone(data) {
       <div class="stat-row"><span>Cohen's kappa</span><span class="v">${s.cohens_kappa.toFixed(3)}</span></div>
       <div class="stat-row"><span>human fusion rate</span><span class="v">${(100*s.human_fusion_rate.overall_rate).toFixed(1)}%</span></div>
       <div class="stat-row"><span>role-gated episodes</span><span class="v">${s.n_role_gated}</span></div>
-      <p class="hint-block" style="margin-top:20px">Written to the CSV as you went. Run <code>scripts/ai6_label_summary.py</code> to regenerate this table any time.</p>
+      <p class="hint-block" style="margin-top:20px">Written to the CSV as you went. Run <code>scripts/label_summary.py</code> to regenerate this table any time.</p>
     </div>`;
 }
 

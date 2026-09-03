@@ -1,15 +1,15 @@
-"""Local HTTP server for the AI-6 hand-labelling pass.
+"""Local HTTP server for a hand-labelling pass over eval logs.
 
-Serves the manifest built by scripts/ai6_sample_for_labelling.py one episode
+Serves the manifest built by scripts/sample_for_labelling.py one episode
 at a time, blind to the judge's grade, and records each of faiz's grades to
 a CSV as he goes (resumable -- already-labelled keys are skipped on
 restart). The judge's grade is only revealed in the response AFTER a label
 is submitted for that episode.
 
 Usage:
-    uv run python scripts/ai6_label_server.py \\
-        --manifest docs/pilots/data/ai6-manifest.json \\
-        --out docs/pilots/data/ai6-hand-labels.csv \\
+    uv run python scripts/label_server.py \\
+        --manifest docs/pilots/data/manifest.json \\
+        --out docs/pilots/data/hand-labels.csv \\
         --port 8765
 """
 from __future__ import annotations
@@ -23,10 +23,10 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from inspect_ai.log import read_eval_log_sample
 
 sys.path.insert(0, "src")
-from principal_eval.ai6_label_ui import PAGE  # noqa: E402
-from principal_eval.ai6_labels import HandLabel, append_label, read_labels, summarize  # noqa: E402
-from principal_eval.ai6_sampling import read_manifest  # noqa: E402
-from principal_eval.ai6_transcript import render_transcript  # noqa: E402
+from principal_eval.label_ui import PAGE  # noqa: E402
+from principal_eval.labels import HandLabel, append_label, read_labels, summarize  # noqa: E402
+from principal_eval.sampling import read_manifest  # noqa: E402
+from principal_eval.transcript import render_transcript  # noqa: E402
 
 
 class LabelState:
@@ -120,8 +120,8 @@ def make_handler(state: LabelState):
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--manifest", default="docs/pilots/data/ai6-manifest.json")
-    ap.add_argument("--out", default="docs/pilots/data/ai6-hand-labels.csv")
+    ap.add_argument("--manifest", default="docs/pilots/data/manifest.json")
+    ap.add_argument("--out", default="docs/pilots/data/hand-labels.csv")
     ap.add_argument("--port", type=int, default=8765)
     ap.add_argument("--no-browser", action="store_true")
     args = ap.parse_args()

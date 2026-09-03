@@ -1,12 +1,12 @@
-"""AI-6 analysis pipeline CLI: every checklist item, per model, from a set of
-log paths (files or directories, forwarded to `inspect_ai.log.list_eval_logs`).
+"""Analysis pipeline CLI: every headline checklist item, per model, from a
+set of log paths (files or directories, forwarded to
+`inspect_ai.log.list_eval_logs`).
 
 Usage:
-    uv run python scripts/ai6_analysis.py logs/ai15-gpt5nano/base logs/ai15-gpt5nano/pushback
-    uv run python scripts/ai6_analysis.py logs/ai5-pilot/haiku-base logs/ai5-pilot/haiku-pushback --out-json out.json
+    uv run python scripts/analyze_logs.py logs/ai15-gpt5nano/base logs/ai15-gpt5nano/pushback
+    uv run python scripts/analyze_logs.py logs/ai5-pilot/haiku-base logs/ai5-pilot/haiku-pushback --out-json out.json
 
-See docs/pilots/2026-09-03-ai6-analysis-and-hand-labelling.md for what each
-section means and which items are still pending sibling PRs (AI-16/17/18/20).
+See docs/analysis-and-hand-labelling.md for what each section means.
 """
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ from collections import defaultdict
 from inspect_ai.log import list_eval_logs
 
 sys.path.insert(0, "src")
-from principal_eval.ai6_analysis import full_report, load_rows  # noqa: E402
+from principal_eval.analysis import full_report, load_rows  # noqa: E402
 
 
 def expand_paths(paths: list[str]) -> list[str]:

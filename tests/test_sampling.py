@@ -1,4 +1,4 @@
-from principal_eval.ai6_sampling import Candidate, stratified_sample
+from principal_eval.sampling import Candidate, stratified_sample
 
 
 def _cand(key_id, family="status_irrelevant", grade="REFUSED", cues=(), harmful=None,

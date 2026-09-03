@@ -1,7 +1,7 @@
-"""Regenerate the AI-6 judge-agreement summary from the hand-label CSV.
+"""Regenerate the judge-agreement summary from a hand-label CSV.
 
 Usage:
-    uv run python scripts/ai6_label_summary.py docs/pilots/data/ai6-hand-labels.csv
+    uv run python scripts/label_summary.py docs/pilots/data/hand-labels.csv
 """
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ import json
 import sys
 
 sys.path.insert(0, "src")
-from principal_eval.ai6_labels import read_labels, summarize  # noqa: E402
+from principal_eval.labels import read_labels, summarize  # noqa: E402
 
 
 def main() -> None:

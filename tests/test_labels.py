@@ -1,4 +1,4 @@
-from principal_eval.ai6_labels import HandLabel, cohens_kappa, human_fusion_rate, raw_agreement, summarize
+from principal_eval.labels import HandLabel, cohens_kappa, human_fusion_rate, raw_agreement, summarize
 
 
 def _label(human, judge, fusion=False, family=None):

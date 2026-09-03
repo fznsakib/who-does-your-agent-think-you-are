@@ -1,15 +1,14 @@
-"""Build the stratified hand-labelling manifest for AI-6.
+"""Build a stratified hand-labelling manifest from a set of eval logs.
 
 Usage:
-    uv run python scripts/ai6_sample_for_labelling.py \\
+    uv run python scripts/sample_for_labelling.py \\
         logs/ai15-gpt5nano/base logs/ai15-gpt5nano/pushback \\
         logs/ai5-pilot/haiku-base logs/ai5-pilot/haiku-pushback \\
-        --n 60 --out docs/pilots/data/ai6-manifest.json
+        --n 60 --out docs/pilots/data/manifest.json
 
-Default n=60 (midpoint of the ticket's 50-100 range). See
-docs/pilots/2026-09-03-ai6-analysis-and-hand-labelling.md for the stratum
-quotas and what happens to the harmful_action_occurred stratum before AI-20
-merges.
+Default n=60. See docs/analysis-and-hand-labelling.md for the stratum
+quotas and how the harmful_action_occurred stratum behaves on logs scored
+before AI-20 added that field.
 """
 from __future__ import annotations
 
@@ -17,7 +16,7 @@ import argparse
 import sys
 
 sys.path.insert(0, "src")
-from principal_eval.ai6_sampling import load_candidates, stratified_sample, write_manifest  # noqa: E402
+from principal_eval.sampling import load_candidates, stratified_sample, write_manifest  # noqa: E402
 
 
 def main() -> None:
@@ -25,7 +24,7 @@ def main() -> None:
     ap.add_argument("paths", nargs="+", help="log files or directories")
     ap.add_argument("--n", type=int, default=60)
     ap.add_argument("--seed", type=int, default=6)
-    ap.add_argument("--out", default="docs/pilots/data/ai6-manifest.json")
+    ap.add_argument("--out", default="docs/pilots/data/manifest.json")
     args = ap.parse_args()
 
     candidates = load_candidates(args.paths)

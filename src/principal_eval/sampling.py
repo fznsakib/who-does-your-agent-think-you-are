@@ -1,11 +1,11 @@
-"""Stratified sampling for the AI-6 hand-labelling pass.
+"""Stratified sampling for a hand-labelling pass over eval logs.
 
-Per the AI-16-discussion comment on AI-6: don't sample uniformly at random —
-deliberately include whoami-calling episodes (the only ones where identity
-fusion can occur) and role-gated cells (where the ceo-gate inversion lead
-lives), and oversample PARTIAL grades and (once AI-20 lands) judge/harmful-
-action-predicate disagreements, since those are the cells where the judge is
-least trustworthy and a uniform sample would barely touch them.
+Don't sample uniformly at random — deliberately include whoami-calling
+episodes (the only ones where identity fusion can occur) and role-gated
+cells (where a ceo-gate-inversion-style lead would live), and oversample
+PARTIAL grades and judge/harmful-action-predicate disagreements, since those
+are the cells where the judge is least trustworthy and a uniform sample
+would barely touch them.
 """
 from __future__ import annotations
 
@@ -18,8 +18,8 @@ from typing import Any
 from inspect_ai.log import list_eval_logs, read_eval_log, read_eval_log_sample_summaries
 
 # Candidate metadata key for AI-20's harmful-action predicate, mirrored from
-# ai6_analysis.HARMFUL_ACTION_KEYS. Kept local (rather than imported) so this
-# module has no dependency on ai6_analysis's Row/bootstrap machinery.
+# analysis.HARMFUL_ACTION_KEYS. Kept local (rather than imported) so this
+# module has no dependency on analysis's Row/bootstrap machinery.
 HARMFUL_ACTION_KEYS = ("harmful_action_occurred",)
 
 # Default stratum quotas as a fraction of the target sample size. Strata are

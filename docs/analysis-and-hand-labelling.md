@@ -1,22 +1,23 @@
-# AI-6 — analysis pipeline and hand-labelling enablement
+# Analysis pipeline and hand-labelling
 
 **Date:** 2026-09-03
-**What this is:** the tooling AI-6 asked for, not a results readout. Run it against
-`logs/ai15-gpt5nano/{base,pushback}` (the load-bearing arm) once you're ready to produce
-numbers for the write-up.
+**What this is:** reusable tooling for judge validation and headline analysis, not a
+results readout. Run it against `logs/ai15-gpt5nano/{base,pushback}` (the load-bearing
+arm) once you're ready to produce numbers for the write-up, or against any other log
+directory in the same shape.
 
 ## 1. Hand-labelling (faiz's tool)
 
 Two steps: build a stratified sample manifest, then run a local page to grade it.
 
 ```bash
-uv run python scripts/ai6_sample_for_labelling.py \
+uv run python scripts/sample_for_labelling.py \
     logs/ai15-gpt5nano/base logs/ai15-gpt5nano/pushback \
-    --n 60 --out docs/pilots/data/ai6-manifest.json
+    --n 60 --out docs/pilots/data/manifest.json
 
-uv run python scripts/ai6_label_server.py \
-    --manifest docs/pilots/data/ai6-manifest.json \
-    --out docs/pilots/data/ai6-hand-labels.csv
+uv run python scripts/label_server.py \
+    --manifest docs/pilots/data/manifest.json \
+    --out docs/pilots/data/hand-labels.csv
 ```
 
 The server opens `http://127.0.0.1:8765/` in your browser. One episode at a time:
@@ -30,13 +31,14 @@ When the manifest is exhausted the page shows raw agreement, Cohen's kappa, and 
 human-verified fusion rate. Regenerate that summary any time without re-labelling:
 
 ```bash
-uv run python scripts/ai6_label_summary.py docs/pilots/data/ai6-hand-labels.csv
+uv run python scripts/label_summary.py docs/pilots/data/hand-labels.csv
 ```
 
 ### Sampling
 
-`--n` defaults to 60 (midpoint of the ticket's 50–100 range). The sampler
-(`src/principal_eval/ai6_sampling.py`) fills quotas in this order before topping up for
+`--n` defaults to 60 (a reasonable middle ground between "quick check" and "enough to
+trust the agreement number"). The sampler
+(`src/principal_eval/sampling.py`) fills quotas in this order before topping up for
 scenario/persona/condition coverage breadth:
 
 | Stratum | Default share | Why |
@@ -52,21 +54,21 @@ AI-20 has merged (`principal_eval.harm`), so any **new** run of `principal_eval`
 existing `logs/ai15-gpt5nano/{base,pushback}` logs were scored before AI-20 landed, so
 they still don't carry the field (scoring happens at eval time, not on read), and the
 sampler still redistributes their share. Re-run the eval, then re-run
-`ai6_sample_for_labelling.py`, to get a labelling pass that covers this axis.
+`sample_for_labelling.py`, to get a labelling pass that covers this axis.
 
 ### Blindness
 
 The manifest carries the judge's grade for bookkeeping, but the label server strips it
 (`_judge_grade`) before the transcript ever reaches the browser — see
-`LabelState.next_episode` in `scripts/ai6_label_server.py`. It only comes back in the
+`LabelState.next_episode` in `scripts/label_server.py`. It only comes back in the
 `/api/submit` response, after your grade is already recorded.
 
 ## 2. Analysis pipeline
 
 ```bash
-uv run python scripts/ai6_analysis.py \
+uv run python scripts/analyze_logs.py \
     logs/ai15-gpt5nano/base logs/ai15-gpt5nano/pushback \
-    --out-json docs/pilots/data/ai6-report.json
+    --out-json docs/pilots/data/report.json
 ```
 
 Accepts any mix of `.eval` files and directories; groups everything by the model under
@@ -75,7 +77,7 @@ pushback logs is enough — you don't need to run it once per scenario or person
 
 ### What each section is
 
-| Key | Ticket item |
+| Key | What it computes |
 |---|---|
 | `headline_table_status_irrelevant` | persona × condition, headline table |
 | `deference_gap_by_rung` | deference gap by rung, with scenario-clustered bootstrap CI |
@@ -84,15 +86,15 @@ pushback logs is enough — you don't need to run it once per scenario or person
 | `calibration_split_role_gated` | appropriate role sensitivity vs. inappropriate deference |
 | `identity_seeking_rate` | AI-14's active-cue definition, role_gated vs. status_irrelevant, by persona |
 | `killswitch_separate` | reported on its own, never folded into the headline |
-| `pushback_paired_flip` | paired within-transcript flip once AI-18 lands; falls back to the AI-15 epoch-matched method (explicitly flagged `UNPAIRED`) until then |
+| `pushback_paired_flip` | paired within-transcript flip using AI-18's `first_grade`; falls back to the AI-15 epoch-matched method (explicitly flagged `UNPAIRED`) for logs that predate it |
 | `harmful_action_rates` | co-primary harmful-rate INTERVAL (`[harmful, harmful+undecidable]`, AI-20 rule 17) + judge disagreement cross-tab, split by family |
-| `fusion_robustness` | headline with vs. without fusion-flagged samples, once AI-16 lands |
+| `fusion_robustness` | headline with vs. without fusion-flagged samples (using AI-16's `fusion_flag` detector) |
 | `partial_sensitivity` | headline compliance at PARTIAL = 0, 0.5, 1 |
 | `nonterminating` | errored/cancelled samples, reported separately with worst-case bounds |
 | `rank_vocabulary_spot_check` | `identity_mentioned` rate by persona — flags where to spot-check transcripts by hand, doesn't read them itself |
 
 Every bootstrap interval resamples **scenario keys** with replacement (not individual
-rows) — see `bootstrap_ci` in `src/principal_eval/ai6_analysis.py`. 10 scenarios × N
+rows) — see `bootstrap_ci` in `src/principal_eval/analysis.py`. 10 scenarios × N
 epochs are repeated draws of the same 10 scenarios, not 10N independent situations; a
 row-level bootstrap would understate every interval.
 
@@ -106,7 +108,7 @@ directly:
 - **AI-16 (fusion)** didn't add score metadata at all. `fusion.fusion_flag` is a
   standalone reviewed function over assistant text (AI-16 also shipped its own readout,
   `scripts/ai16_fusion_readout.py` / `docs/pilots/2026-09-03-fusion-readout.md`, with the
-  first real numbers: haiku 22.5% of whoami-callers fused, gpt-5-nano 0%). `ai6_analysis.py`
+  first real numbers: haiku 22.5% of whoami-callers fused, gpt-5-nano 0%). `analysis.py`
   calls `fusion_flag` directly on each sample's transcript in `load_rows`, so
   `fusion_robustness` is always computed rather than gated behind `"available"`.
 - **AI-17 (runaway-loop bounding)** didn't add a disposition metadata key either — it
@@ -134,18 +136,18 @@ directly:
 The lesson: even "parameterize now, reconcile later" needs the reconciliation pass done
 by hand against the real diff, not assumed correct because the tests pass — the tests
 only proved the None-vs-present *branches* worked, not that the guessed key *names*
-would ever match. See the module docstring in `src/principal_eval/ai6_analysis.py` for
+would ever match. See the module docstring in `src/principal_eval/analysis.py` for
 the up-to-date field mapping.
 
 ### Sanity-check helpers
 
-`sanity_check_cell(rows, persona, condition, scenario)` in `ai6_analysis.py` returns the
+`sanity_check_cell(rows, persona, condition, scenario)` in `analysis.py` returns the
 raw grade list plus the tool-call cross-reference for one cell — for the "recompute by
 hand" checklist item. Not wired into the CLI (it's a one-off verification step, not a
 report section); call it from a REPL:
 
 ```python
-from principal_eval.ai6_analysis import load_rows, sanity_check_cell
+from principal_eval.analysis import load_rows, sanity_check_cell
 rows = load_rows(["logs/ai15-gpt5nano/base/<file>.eval"]).rows
 sanity_check_cell(rows, "ceo", "identified", "killswitch")
 ```

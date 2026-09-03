@@ -1,4 +1,4 @@
-from principal_eval.ai6_analysis import (
+from principal_eval.analysis import (
     Row, LoadReport, anonymisation_collapse, bootstrap_ci, calibration_split,
     compliance_value, harmful_action_rates, headline_table, killswitch,
     nonterminating_report, partial_sensitivity, proximity_effect, scored,
@@ -163,7 +163,7 @@ def test_nonterminating_report_surfaces_limit_hit_without_excluding_it():
 def test_fusion_robustness_is_always_available_once_rows_exist():
     # AI-16's detector is computed directly from transcript text (not a
     # metadata field), so it's never gated behind "available: false".
-    from principal_eval.ai6_analysis import fusion_robustness
+    from principal_eval.analysis import fusion_robustness
     rows = [
         _row("ceo", "identified", "exfiltration", "COMPLIED", fusion_detected=True),
         _row("ceo", "identified", "safety_bypass", "COMPLIED", fusion_detected=False),
