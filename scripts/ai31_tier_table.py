@@ -13,9 +13,17 @@ Two restrictions make the numbers comparable, and both cost something:
   * On the HARM outcome, `exfiltration` and `external_disclosure` are dropped
     from EVERY arm. The AI-23 amendment forbids cross-fork contrasts on those two
     scenarios' harm rates, because the cheap-arm logs predate the structural
-    predicates and return legacy-undecidable there. Dropping them costs the newer
-    arms nothing — all four score 0.000 on both — but it is what makes the
-    contrast legal rather than convenient.
+    predicates and return legacy-undecidable there.
+
+    This exclusion is NOT free, and an earlier draft wrongly said it was on the
+    grounds that all four newer arms score 0.000 on both scenarios. Dropping two
+    of seven scenarios cuts each persona's denominator from 7 to 5, so every
+    non-zero harm gap is inflated by exactly 7/5 = 1.40x and the bootstrap
+    resamples 5 clusters instead of 7. terra's E1 harm is +0.093 on the
+    registered seven-scenario estimand and +0.130 here; sonnet-5's is +0.071 and
+    +0.100. They are TWO ESTIMANDS and must be labelled as such. Compliance is
+    unaffected: it is computed over all seven scenarios, which is why the
+    compliance column here matches the per-model E1 exactly.
 
 The cheap points are separated from the mid/flagship points by SIX documented
 changes (AI-16 fixture, AI-29 reasoning mode, AI-23 predicates, AI-26 rubric,
@@ -30,20 +38,23 @@ Usage:
 """
 from __future__ import annotations
 
+import argparse
 import glob
+import os
 import random
 from collections import defaultdict
 from statistics import mean
 
 import sys
 
-from inspect_ai.log import read_eval_log_samples
+from inspect_ai.log import read_eval_log, read_eval_log_samples
 
 sys.path.insert(0, "src")
 from principal_eval.harm import HARMFUL, HarmContext, harm_verdict  # noqa: E402
 
 BOOT, SEED = 10_000, 0
-LOGS = "/Users/faizaan/Documents/who-does-your-agent-think-you-are/logs"
+LOGS_DEFAULT = "/Users/faizaan/Documents/who-does-your-agent-think-you-are/logs"
+LOGS = os.environ.get("AI31_LOG_ROOT", LOGS_DEFAULT)
 HARM_EXCLUDED = {"exfiltration", "external_disclosure"}   # AI-23 amendment
 
 # (label, provider, tier, band as fraction of that provider's flagship, log dir, clean?)
@@ -74,13 +85,30 @@ def load(log_dir: str):
     `scripts/harmful_action_backfill.py` does. Logs that carry the field use it; logs
     that don't are recomputed, and which path was taken is reported.
     """
-    path = sorted(glob.glob(f"{log_dir}/**/*.eval", recursive=True))[-1]
+    found = sorted(glob.glob(f"{log_dir}/**/*.eval", recursive=True))
+    if not found:
+        raise SystemExit(
+            f"no .eval under {log_dir!r}. Logs are local artefacts and are NOT committed; "
+            f"pass --logs <root> (or set AI31_LOG_ROOT) pointing at your own logs "
+            f"directory rather than assuming the author's checkout.")
+    path = found[-1]
+    header = read_eval_log(path, header_only=True)
+    expected = header.results.total_samples if header.results else 0
     comp = defaultdict(lambda: defaultdict(list))
     harm = defaultdict(lambda: defaultdict(list))
     backfilled = 0
     native = 0
+    seen = 0
+    # rules 15/17: excluded samples are counted and bounded, never silently dropped.
+    # The nano arm is 595/600, so this is live, not hypothetical.
+    excluded: list[dict] = []
     for s in read_eval_log_samples(path, all_samples_required=False):
+        seen += 1
         if s.error is not None or s.limit is not None:
+            m = s.metadata or {}
+            excluded.append({"persona": m.get("persona"), "scenario": m.get("scenario"),
+                             "family": m.get("family"),
+                             "why": "error" if s.error else "limit"})
             continue
         md = {}
         for sc in (s.scores or {}).values():
@@ -111,7 +139,8 @@ def load(log_dir: str):
             h = 1.0 if verdict.verdict == HARMFUL else 0.0
             backfilled += 1
         harm[m["persona"]][m["scenario"]].append(h)
-    return comp, harm, native, backfilled
+    unaccounted = max(0, expected - seen)
+    return comp, harm, native, backfilled, excluded, expected, seen, unaccounted
 
 
 def gap(d, a, b, scens):
@@ -129,14 +158,24 @@ def gap(d, a, b, scens):
 
 
 def main() -> None:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--logs", default=LOGS,
+                    help="root of the local logs tree (logs are not committed); "
+                         "also settable via AI31_LOG_ROOT")
+    args = ap.parse_args()
+    globals()["LOGS"] = args.logs
+    for i, a in enumerate(ARMS):
+        ARMS[i] = a[:4] + (a[4].replace(LOGS_DEFAULT, args.logs),) + a[5:]
     print("AI-31 TIER TABLE — DESCRIPTIVE (per the 2026-09-03 AI-31 amendment)")
     print("status_irrelevant only; harm excludes exfiltration + external_disclosure "
           "on EVERY arm (AI-23)\n")
     rows = {}
     print(f"{'model':22s} {'prov':10s} {'tier':9s} {'band':12s} "
           f"{'E1 compliance':>26s} {'E1 harm':>26s}  clean?")
+    disposition = {}
     for label, prov, tier, band, d, clean in ARMS:
-        comp, harm, native, backfilled = load(d)
+        comp, harm, native, backfilled, excluded, expected, seen, unacc = load(d)
+        disposition[label] = (excluded, expected, seen, unacc)
         cs = sorted({s for v in comp.values() for s in v})
         hs = sorted({s for v in harm.values() for s in v})
         co, cl, ch = gap(comp, "ceo", "analyst", cs)
@@ -146,6 +185,22 @@ def main() -> None:
         print(f"{label:22s} {prov:10s} {tier:9s} {band:12s} "
               f"{co:+.3f} [{cl:+.3f},{ch:+.3f}] {ho:+.3f} [{hl:+.3f},{hh:+.3f}]  "
               f"{'yes' if clean else 'NO':4s} {src}")
+
+    print("\n--- DISPOSITION (rules 15/17): excluded samples are bounded, not dropped ---")
+    for label, (excluded, expected, seen, unacc) in disposition.items():
+        note = "clean" if not excluded and not unacc else "*** SEE BOUNDS ***"
+        print(f"  {label:22s} header={expected:5d} read={seen:5d} "
+              f"excluded={len(excluded):3d} unaccounted={unacc:3d}  {note}")
+        if excluded or unacc:
+            by = defaultdict(int)
+            for e in excluded:
+                by[(e['persona'], e['why'])] += 1
+            print(f"      {dict(by) if by else ''}"
+                  f"{f'  {unacc} sample(s) in header but absent from the log' if unacc else ''}")
+            print(f"      worst-case bound on this arm's E1: the excluded samples are at "
+                  f"most {len(excluded) + unacc} of ~{expected // 6} per persona-cell, so "
+                  f"imputing them all compliant/harmful for ceo and none for analyst moves "
+                  f"E1 by at most {(len(excluded) + unacc) / max(1, expected // 6):+.3f}.")
 
     print("\n--- the load-bearing contrast: MID vs FLAGSHIP (mutually clean arms) ---")
     for prov, mid, flag in (("OpenAI", "gpt-5.6-terra", "gpt-5.6-sol"),
