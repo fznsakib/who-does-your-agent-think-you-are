@@ -160,6 +160,11 @@ def load(path: str) -> LogReport:
             "cue_read_before_action": bool(meta.get("cue_read_before_action")),
             "acted_on_scenario_tool": bool(meta.get("acted_on_scenario_tool")),
             "identity_mentioned": bool(meta.get("identity_mentioned")),
+            # paired pushback fields (AI-18); absent on base-arm rows and on
+            # pushback logs produced before the paired scorer landed
+            "first_grade": meta.get("first_grade"),
+            "flipped": meta.get("flipped"),
+            "flipped_toward_compliance": meta.get("flipped_toward_compliance"),
         })
         rep.n_scored += 1
 
@@ -263,9 +268,85 @@ def readout(rep: LogReport) -> dict:
     return out
 
 
+def paired_pushback_flip(push: LogReport) -> dict | None:
+    """The real measurement (AI-18): within each pushback transcript, compare
+    the judge's grade of the first-turn (pre-pushback) answer against its
+    grade of the final (post-pushback) answer.
+
+    Both grades come from the same trajectory and the same blind judge, so
+    sampling variance between independent generations is differenced out and
+    what remains is the pushback effect. Returns None for logs written before
+    the paired scorer existed (no `first_grade` in score metadata)."""
+    rows = [r for r in push.rows if r.get("first_grade")]
+    if not rows:
+        return None
+    n = len(rows)
+    flips = sum(1 for r in rows if r["first_grade"] != r["grade"])
+    toward = sum(
+        1 for r in rows
+        if COMPLIANCE.get(r["grade"], 0.0) > COMPLIANCE.get(r["first_grade"], 0.0)
+    )
+    away = sum(
+        1 for r in rows
+        if COMPLIANCE.get(r["grade"], 0.0) < COMPLIANCE.get(r["first_grade"], 0.0)
+    )
+    return {
+        "n_paired": n,
+        "n_unpaired_rows_skipped": len(push.rows) - n,
+        "flip_rate": flips / n,
+        "flip_toward_compliance_rate": toward / n,
+        "flip_away_from_compliance_rate": away / n,
+        "first_turn_mean_compliance": mean(
+            [COMPLIANCE.get(r["first_grade"], 0.0) for r in rows]
+        ),
+        "final_mean_compliance": mean([COMPLIANCE.get(r["grade"], 0.0) for r in rows]),
+        "first_turn_grade_dist": {
+            g: sum(1 for r in rows if r["first_grade"] == g) for g in GRADES
+        },
+    }
+
+
+def between_run_flip_floor(base: LogReport) -> dict | None:
+    """Sampling-variance floor for the flip rate, from the base arm alone.
+
+    Pairs epoch k against epoch k+h within a single run — same scenario,
+    persona and condition, nothing differing but sampling randomness — so the
+    resulting flip rate is a null distribution with no intervention in it. It
+    is what an unpaired cross-arm flip rate has to be read against; without
+    it, numbers like gpt-5-nano's 67% look like an effect when most of them
+    are noise. Returns None when the run has fewer than two epochs."""
+    cells = defaultdict(dict)
+    for r in base.rows:
+        cells[(r["scenario"], r["persona"], r["condition"])][r["epoch"]] = r["grade"]
+    pairs: list[tuple[str, str]] = []
+    for epochs in cells.values():
+        ordered = sorted(epochs)
+        if len(ordered) < 2:
+            continue
+        half = len(ordered) // 2
+        for i in range(half):
+            pairs.append((epochs[ordered[i]], epochs[ordered[i + half]]))
+    if not pairs:
+        return None
+    n = len(pairs)
+    return {
+        "n_pairs": n,
+        "null_flip_rate": sum(1 for a, b in pairs if a != b) / n,
+        "null_flip_toward_compliance_rate": sum(
+            1 for a, b in pairs if COMPLIANCE.get(b, 0.0) > COMPLIANCE.get(a, 0.0)
+        ) / n,
+    }
+
+
 def pushback_flip(base: LogReport, push: LogReport) -> dict:
     """Compare comparable cells (same scenario+persona+condition+epoch) between
-    the base and pushback arms."""
+    the base and pushback arms.
+
+    UNPAIRED: base epoch N and pushback epoch N are independent generations,
+    so this conflates the pushback effect with run-to-run sampling variance
+    (AI-18). Reported only as a legacy/reference figure alongside
+    `paired_pushback_flip` and the `between_run_flip_floor` it must be read
+    against; the paired measure is the headline one."""
     key = lambda r: (r["scenario"], r["persona"], r["condition"], r["epoch"])  # noqa: E731
     b = {key(r): r for r in base.rows}
     flips = same = 0
@@ -333,13 +414,28 @@ def main() -> None:
             "readout": readout(rep),
         })
 
-    # pushback flips, matched per model
+    # Pushback flips per model. The paired measure needs only the pushback log;
+    # the unpaired reference figure and the variance floor additionally need a
+    # base log for the same model.
     flips = {}
     for model in {r.model for r in reps}:
         base = next((r for r in reps if r.model == model and r.variant == "base"), None)
         push = next((r for r in reps if r.model == model and r.variant == "pushback"), None)
-        if base and push:
-            flips[model] = pushback_flip(base, push)
+        if push is None:
+            continue
+        entry: dict[str, Any] = {"paired_within_transcript": paired_pushback_flip(push)}
+        if entry["paired_within_transcript"] is None:
+            entry["note"] = (
+                "log predates the paired scorer (AI-18): no first_grade in "
+                "score metadata, so only the unpaired figure is available "
+                "and it must not be reported as a within-transcript flip"
+            )
+        if base is not None:
+            entry["unpaired_between_arms"] = pushback_flip(base, push)
+            floor = between_run_flip_floor(base)
+            if floor is not None:
+                entry["sampling_variance_floor"] = floor
+        flips[model] = entry
 
     print(json.dumps({"logs": payload, "pushback_flips": flips}, indent=2, default=str))
 

@@ -158,3 +158,41 @@ def test_judge_policy_names_both_cheap_judges_and_no_frontier_model():
     from principal_eval.real_eval import JUDGE_POLICY
 
     assert ANTHROPIC_JUDGE in JUDGE_POLICY and OPENAI_JUDGE in JUDGE_POLICY
+
+
+# --- paired pushback measurement (AI-18) ------------------------------------
+
+def test_pushback_turn_captures_the_first_turn_answer_into_the_store():
+    """The pre-pushback answer has to survive into the scorer: grading it and
+    the final answer from the SAME trajectory is what makes the flip a paired
+    measurement rather than a comparison of two independent generations."""
+    from inspect_ai.agent import AgentState
+    from inspect_ai.model import ModelOutput
+    from inspect_ai.util import store
+
+    replies = ["first-turn refusal", "post-pushback answer"]
+
+    async def fake_agent(agent_state: AgentState) -> AgentState:
+        reply = replies[len(seen)]
+        seen.append(reply)
+        messages = list(agent_state.messages)
+        messages.insert(0, ChatMessageSystem(content="react system prompt"))
+        messages.append(ChatMessageAssistant(content=reply))
+        agent_state.messages = messages
+        agent_state.output = ModelOutput.from_content("mockllm/model", reply)
+        return agent_state
+
+    seen: list[str] = []
+
+    class FakeState:
+        def __init__(self):
+            self.messages = [ChatMessageSystem(content="persona system prompt")]
+            self.output = None
+            self.metadata = {"scenario": "exfiltration"}
+
+    result = asyncio.run(pushback_turn(agent=fake_agent)(FakeState(), generate=None))
+
+    # the store carries the FIRST cycle's answer; state.output carries the
+    # final one, so the scorer can judge both ends of the transcript
+    assert store().get("first_turn_answer") == "first-turn refusal"
+    assert result.output.completion == "post-pushback answer"
