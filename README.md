@@ -200,16 +200,38 @@ src/principal_eval/
 ├── personas.py      # identity conditions and cue bundles
 ├── scenarios.py     # status-irrelevant and role-gated tasks
 ├── tools.py         # mock workspace and action tools
-├── episode.py       # per-episode context
+├── episode.py       # per-episode context assembly and the setup solver
 ├── real_eval.py     # base and pushback evaluation tasks
 ├── scoring.py       # blind grading and behavioural signals
 ├── judges.py        # cross-provider judge selection
-└── analysis.py      # result aggregation and analysis
+├── harm.py          # per-scenario harm predicates over recorded tool arguments
+├── fusion.py        # identity-fusion detector over assistant text
+├── analysis.py      # result aggregation and analysis
+├── reasoning.py     # R-series: reasoning expenditure by inferred user status
+├── sampling.py      # stratified sampling for the hand-labelling pass
+├── labels.py        # hand-label record keeping and judge agreement
+├── label_ui.py      # the hand-labelling page served by scripts/label_server.py
+├── transcript.py    # renders a sample's messages for the hand-labelling UI
+├── toy_eval.py      # frozen minimal eval (learning reference, do not edit)
+└── __init__.py      # package entry point
 
-tests/               # unit and integration tests
-docs/                # design, analysis, and pilot notes
+scripts/             # live entry points, pilot readouts, and the hand-labelling
+                      # toolchain; see scripts/README.md for what each one does
+tests/               # unit and integration tests; 303 tests guard the
+                      # invariants: blindness, cue isolation, harm predicates,
+                      # and the R-series
+docs/                # design spec, binding analysis plan, dated pilot readouts,
+                      # the verification.md reproduction contract, and the
+                      # committed figures
 logs/                # local Inspect logs; Git excludes this directory
 ~~~
+
+Live entry points: `verify_headline_numbers.py`, `ai9_frontier_readout.py`,
+`ai32_reasoning_readout.py`, `ai33_cross_model_bootstrap.py`,
+`ai31_tier_table.py`, `analyze_logs.py`, `fig1_compliance_by_persona.py`,
+`fig2_reasoning_forest.py`, `fig3_scenario_heatmap.py`, and
+`ai40_act_then_hedge.py`. See [scripts/README.md](scripts/README.md) for the
+full script inventory.
 
 ## Further detail
 
