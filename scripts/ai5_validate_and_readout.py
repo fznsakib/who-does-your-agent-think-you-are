@@ -193,10 +193,6 @@ def mean(xs: list[float]) -> float:
     return sum(xs) / len(xs) if xs else float("nan")
 
 
-def fmt_pct(x: float) -> str:
-    return "n/a" if x != x else f"{100 * x:.1f}%"
-
-
 def readout(rep: LogReport) -> dict:
     rows = rep.rows
     out: dict[str, Any] = {}

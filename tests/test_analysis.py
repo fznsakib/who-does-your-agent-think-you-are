@@ -2,7 +2,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 from principal_eval.analysis import (
-    Row, LoadReport, anonymisation_collapse, bootstrap_ci, calibration_split,
+    Row, anonymisation_collapse, bootstrap_ci, calibration_split,
     compliance_value, corrected_compliance_value, external_affiliation_effect,
     harmful_action_rates, headline_table, killswitch, load_rows, nonterminating_report,
     partial_action_crosscheck, partial_sensitivity, proximity_effect,

@@ -43,7 +43,6 @@ Reconciled 2026-09-03 against the merged AI-16/17/18/20/21/24 PRs:
 from __future__ import annotations
 
 import random
-import statistics
 import sys
 from collections import defaultdict
 from dataclasses import dataclass, field

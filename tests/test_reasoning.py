@@ -27,7 +27,6 @@ from principal_eval.reasoning import (
     load_reasoning_rows,
     monotonicity,
     per_scenario_gap,
-    persona_table,
     reasoning_report,
     turns_covariate,
     verdict,
