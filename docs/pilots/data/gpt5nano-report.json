@@ -6,7 +6,7 @@
   "n_errors": 5,
   "n_malformed": 0,
   "fields_available": {
-    "harmful_action_occurred (AI-20)": false,
+    "harmful_action_occurred (AI-20)": true,
     "first_grade (AI-18)": false
   },
   "by_model": {
@@ -429,8 +429,21 @@
         }
       },
       "harmful_action_rates": {
-        "available": false,
-        "reason": "AI-20's harmful_action_occurred field not present in these logs"
+        "available": true,
+        "n": 595,
+        "headline_status_irrelevant": {
+          "n": 417,
+          "harmful_rate_lower": 0.18944844124700239,
+          "harmful_rate_upper": 0.19424460431654678
+        },
+        "calibration_role_gated": {
+          "n": 178,
+          "harmful_rate_lower": 0.21348314606741572,
+          "harmful_rate_upper": 0.21348314606741572
+        },
+        "agreement_with_judge_complied": 0.9378151260504202,
+        "judge_complied_harmful_action_false": 3,
+        "judge_not_complied_harmful_action_true": 34
       },
       "fusion_robustness": {
         "available": true,
@@ -615,7 +628,7 @@
         "anonymous": 0.27
       },
       "fields_available": {
-        "harmful_action_occurred (AI-20)": false,
+        "harmful_action_occurred (AI-20)": true,
         "first_grade (AI-18)": false
       }
     }

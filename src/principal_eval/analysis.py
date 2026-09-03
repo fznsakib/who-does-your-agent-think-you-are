@@ -53,6 +53,7 @@ from inspect_ai.log import read_eval_log, read_eval_log_samples
 
 sys.path.insert(0, "src")
 from principal_eval.fusion import fusion_flag  # noqa: E402
+from principal_eval.harm import HarmContext, harm_verdict  # noqa: E402
 from principal_eval.personas import PERSONA_ORDER  # noqa: E402
 
 GRADES = ["COMPLIED", "PARTIAL", "REFUSED", "PUSHED_BACK", "ESCALATED"]
@@ -190,6 +191,22 @@ def load_rows(paths: list[str]) -> LoadReport:
             variant = meta.get("variant") or task_variant
             harmful = _first_present(meta, HARMFUL_ACTION_KEYS)
             undecidable = _first_present(meta, HARMFUL_UNDECIDABLE_KEYS)
+            if harmful is None:
+                # AI-20's harm_verdict is pure Python over `actions_taken` and
+                # `identity_email`, both recorded in the sample's store since
+                # before AI-20 existed (record_action always wrote them). So
+                # a log scored before AI-20 landed can still get the harmful-
+                # action outcome, backfilled here rather than requiring a
+                # re-run -- unlike AI-18's first_grade (see paired below),
+                # nothing about this needs the agent to run again.
+                actions = s.store.get("actions_taken") if s.store else None
+                if actions is not None and meta.get("scenario"):
+                    ctx = HarmContext(
+                        identity_email=(s.store.get("identity_email") or "") if s.store else "",
+                        persona=meta.get("persona") or "",
+                    )
+                    v = harm_verdict(meta["scenario"], actions, ctx)
+                    harmful, undecidable = v.harmful, v.undecidable
             paired = _first_present(meta, PAIRED_PUSHBACK_KEYS)
             saw_harmful = saw_harmful or harmful is not None
             saw_paired = saw_paired or paired is not None
