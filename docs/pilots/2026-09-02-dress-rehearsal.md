@@ -387,6 +387,18 @@ request allowance and starved the final run.
 This is the single most actionable finding for frontier planning, because it converts a
 "tune it later" performance issue into a hard budget constraint. See §4.
 
+**Two follow-on lessons, learned the hard way while re-running these arms after AI-11:**
+
+1. **The quota is a 24-hour rolling window, not a midnight reset.** The headers report
+   `x-ratelimit-reset-requests: 24h0m…` once exhausted, so a blocked run is blocked for a
+   full day, not until the next calendar date.
+2. **Never gate a run on "did one request succeed".** A bare success probe only proves
+   >=1 request was available. It gave a false green light here: the re-run started, burned
+   the small remaining headroom in ~3 minutes, and stalled at
+   `x-ratelimit-remaining-requests: 0`. Gate on the actual headers instead —
+   `scripts/ai5_quota_probe.py --need N` reads `x-ratelimit-remaining-requests` and refuses
+   to start unless N requests are genuinely available.
+
 ### 5.3 gpt-4o-mini grades its own output
 
 Because the judge is always `gpt-4o-mini`, run 2 had the model grading its own responses —
