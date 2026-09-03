@@ -85,19 +85,24 @@ turns, analyst as reference:
 
 | coefficient | `claude-opus-5` | `gpt-5.6-sol` |
 |---|---|---|
-| ceo | **+84.2 [+47.7, +138.2]** | **+45.9 [+16.1, +75.3]** |
-| chief_of_staff | +61.4 [+25.1, +102.2] | +45.7 [+24.5, +68.8] |
+| ceo | **+84.2 [+48.1, +138.2]** | **+45.9 [+16.1, +75.3]** |
+| chief_of_staff | +61.4 [+25.5, +102.2] | +45.7 [+24.5, +68.8] |
 | researcher | +35.4 [+21.0, +49.1] | +22.8 [+8.6, +40.4] |
 | anonymous | +13.3 [−8.9, +35.7] | +10.7 [−6.6, +33.2] |
-| turns | +99.0 [+58.7, +129.7] | +45.7 [+21.6, +63.1] |
+| turns | +99.0 [+59.8, +129.7] | +45.7 [+21.6, +63.1] |
 
 Turns are a strong predictor of reasoning tokens, as they must be — and the `ceo`
 coefficient survives holding them constant, on both models. The two controls disagree
 about nothing.
 
 *(The coefficient is identified only because turns vary within each persona; if each
-persona sat at one fixed turn count, persona and turns would be collinear and the split
-would be an artefact of the solver. `tests/test_reasoning.py` pins both cases.)*
+persona sat at one fixed turn count, persona and turns would be collinear and `lstsq`'s
+minimum-norm split would be a property of the solver rather than of the model. The fit
+checks the design-matrix rank on the point estimate and on every bootstrap draw, returning
+unavailable rather than a solver artefact — a resampled scenario set can be rank-deficient
+even when the full design is not, which is why a handful of draws are dropped here and the
+bounds are very slightly narrower than a rank-blind fit would report.
+`tests/test_reasoning.py` pins both the identified and the degenerate case.)*
 
 ## 3. R3 — not verbosity either
 
@@ -235,14 +240,29 @@ mislabelling `reasoning_tokens` itself.
 
 ```bash
 uv run python scripts/ai32_reasoning_readout.py \
-  <path-to>/logs/ai9-frontier/opus5-base <path-to>/logs/ai9-frontier/gpt56sol-base
+  <path-to>/logs/ai9-frontier/opus5-base <path-to>/logs/ai9-frontier/gpt56sol-base \
+  --status exploratory
 
 uv run python scripts/ai32_reasoning_transcripts.py \
   <path-to>/logs/ai9-frontier/opus5-base/<log>.eval --persona ceo --top 5
 ```
 
 Log paths are arguments, not hardcoded: the same scripts run over any base arm of this
-harness, which is what makes the AI-31 mid-tier confirmatory test a one-command job.
+harness, which is what makes the AI-31 mid-tier confirmatory test a one-command job (with
+`--status confirmatory`).
+
+Three guards, because the pipeline will be pointed at arms nobody has looked at yet:
+
+- **`--status` is required.** Log paths cannot tell the script whether it is holding the
+  arm that motivated the effect or an independent one, and the amendment requires the
+  status to travel with every R-number. It refuses to print one until told.
+- **Separate runs are refused, not pooled.** Same model and same arm does not mean same
+  run: `logs/ai9-frontier/` holds 1-epoch smoke runs beside the 20-epoch production runs,
+  and pointing at the parent directory would otherwise average them into one arm. Blocks
+  are keyed on `(model, arm)` and refuse to draw on more than one `run_id` unless
+  `--allow-mixed-runs` says so explicitly.
+- **The R7 dump fails when a cell has fewer than the requested transcripts**, so an
+  incomplete hand-read cannot look like a satisfied gate.
 
 ## 9. What this changes, and what it does not
 

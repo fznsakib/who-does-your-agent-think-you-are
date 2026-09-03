@@ -9,8 +9,15 @@ in the amendment BEFORE anything here was run.
 Read-only. Log paths are arguments — nothing is hardcoded, so the same script
 runs over the AI-9 frontier arms and over any later base arm of this harness.
 
+`--status` is REQUIRED. The amendment gives R-numbers different evidentiary
+status depending on which arm produced them -- exploratory against the AI-9 logs
+that motivated the effect, confirmatory against an arm that did not -- and log
+paths alone cannot tell the script which it is holding. Rather than print a
+generic banner over either, it refuses to emit a number until the caller says.
+
 Usage:
-    uv run python scripts/ai32_reasoning_readout.py <log.eval|log-dir> [...] [--json out.json]
+    uv run python scripts/ai32_reasoning_readout.py <log.eval|log-dir> [...] \
+        --status exploratory|confirmatory [--json out.json] [--allow-mixed-runs]
 """
 from __future__ import annotations
 
@@ -26,6 +33,20 @@ from principal_eval.reasoning import (  # noqa: E402
     load_reasoning_rows,
     reasoning_report,
 )
+
+STATUS_BANNER = {
+    "exploratory": (
+        "STATUS: EXPLORATORY. These logs motivated the effect, so they cannot also\n"
+        "confirm it (plan rules 13, 14, 20). The estimand, controls and verdict table\n"
+        "were fixed before recomputation, but every number below is exploratory and\n"
+        "must be labelled as such wherever it is quoted."
+    ),
+    "confirmatory": (
+        "STATUS: CONFIRMATORY. This arm did not motivate the effect and was not read\n"
+        "before the amendment was committed, so the pre-registration applies to it in\n"
+        "full."
+    ),
+}
 
 
 def expand(args: list[str]) -> list[str]:
@@ -62,20 +83,41 @@ def main() -> None:
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
     if not args:
         raise SystemExit(__doc__)
+    consumed = []
     json_out = None
     if "--json" in sys.argv:
-        i = sys.argv.index("--json")
-        json_out = sys.argv[i + 1]
-        args = [a for a in args if a != json_out]
+        json_out = sys.argv[sys.argv.index("--json") + 1]
+        consumed.append(json_out)
+    status = None
+    if "--status" in sys.argv:
+        status = sys.argv[sys.argv.index("--status") + 1]
+        consumed.append(status)
+    args = [a for a in args if a not in consumed]
+
+    if status not in STATUS_BANNER:
+        raise SystemExit(
+            "--status is required and must be 'exploratory' or 'confirmatory'.\n"
+            "The amendment requires every R-number to carry its evidentiary status, "
+            "and log paths cannot tell the script which arm they are. Against the "
+            "AI-9 frontier logs (the arm that motivated the effect) pass "
+            "--status exploratory."
+        )
 
     paths = expand(args)
     load = load_reasoning_rows(paths)
     # R8 goes back to the source logs by a second extraction path, so it is a
     # separate pass over `paths` rather than a read of the rows above.
-    report = attach_independent_checks(reasoning_report(load), paths)
+    try:
+        report = reasoning_report(
+            load, allow_mixed_runs="--allow-mixed-runs" in sys.argv)
+    except ValueError as e:  # a refusal, not a crash -- report it as one
+        raise SystemExit(str(e))
+    report = attach_independent_checks(report, paths)
+    report["status"] = status
 
     print("AI-32 — R-series: reasoning expenditure by inferred user status")
     print("Pre-registered in docs/analysis-plan.md § J, 2026-09-03 (AI-32).")
+    print(STATUS_BANNER[status])
     print("Scope: status_irrelevant only; ladder personas only; scenario-clustered")
     print("bootstrap, 10,000 resamples, 95% percentile intervals, seed 6.")
     d = report["disposition"]
@@ -84,9 +126,11 @@ def main() -> None:
 
     for label, b in report["models"].items():
         print(f"\n{'=' * 82}\n=== {label} ===")
+        exc = b["excluded_by_reason"]
         print(f"in scope: {b['n_in_scope']} samples over {b['n_scenarios']} scenarios "
-              f"({b['n_analysable_all_families']} analysable across all families, "
-              f"{b['n_excluded']} excluded)")
+              f"({b['n_analysable_all_families']} analysable across all families; "
+              f"excluded: {exc['error']} errored, {exc['limit']} limit-hit)")
+        print(f"run_id: {', '.join(b['run_ids']) or 'n/a'}")
         if b.get("warning"):
             print(f"  !! {b['warning']}")
         if b.get("note") and not b["measurable"]:
@@ -138,8 +182,11 @@ def main() -> None:
         for key, scale in (("R4_monotonicity_per_sample", "per sample"),
                            ("R4_monotonicity_per_turn", "per turn")):
             m = b[key]
-            print(f"\n  R4 — ladder monotonicity, {scale}: "
-                  f"{'MONOTONIC' if m['monotonic'] else 'NOT monotonic'}")
+            state = ("MONOTONIC" if m["monotonic"] else "NOT monotonic"
+                     ) if m["monotonic"] is not None else (
+                     f"INCOMPLETE — cannot be stated (missing {m['missing_rungs']}, "
+                     f"non-finite {m['non_finite_rungs']})")
+            print(f"\n  R4 — ladder monotonicity, {scale}: {state}")
             print("    " + "  ".join(f"{p}={v:.0f}" for p, v in m["ladder"]))
             for br in m["breaks"]:
                 print(f"    break: {br['from']} -> {br['to']} ({br['drop']:+.0f})")

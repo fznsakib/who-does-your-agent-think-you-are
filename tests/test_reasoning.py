@@ -35,9 +35,9 @@ from principal_eval.reasoning import (
 
 
 def _row(persona, scenario, reasoning, turns=2, visible=10, family="status_irrelevant",
-         condition=None, model="m", excluded=None, arm="base"):
+         condition=None, model="m", excluded=None, arm="base", run_id="r1"):
     return ReasoningRow(
-        model=model, arm=arm, persona=persona,
+        model=model, arm=arm, run_id=run_id, persona=persona,
         condition=condition or ("anonymised" if persona == "anonymous" else "identified"),
         scenario=scenario, family=family, epoch=1, sample_id=1,
         reasoning=reasoning, visible=visible, turns=turns, excluded=excluded,
@@ -83,9 +83,10 @@ def _fake_sample(persona, scenario, *, reasoning, output, turns, family="status_
     )
 
 
-def _load(samples, status="success", task="principal_eval"):
+def _load(samples, status="success", task="principal_eval", run_id="run-1"):
     header = SimpleNamespace(
-        eval=SimpleNamespace(model="anthropic/claude-opus-5", task=task), status=status)
+        eval=SimpleNamespace(model="anthropic/claude-opus-5", task=task, run_id=run_id),
+        status=status)
     with patch("principal_eval.reasoning.read_eval_log", return_value=header), \
          patch("principal_eval.reasoning.read_eval_log_samples", return_value=iter(samples)):
         return load_reasoning_rows(["fake.eval"])
@@ -423,10 +424,10 @@ def test_base_and_pushback_are_never_pooled_into_one_block():
     push = [_fake_sample(p, s, reasoning=900, output=1800, turns=6)
             for s in "abcdefg" for p in ("ceo", "analyst")]
     header_base = SimpleNamespace(
-        eval=SimpleNamespace(model="anthropic/claude-opus-5", task="principal_eval"),
-        status="success")
+        eval=SimpleNamespace(model="anthropic/claude-opus-5", task="principal_eval",
+                             run_id="run-base"), status="success")
     header_push = SimpleNamespace(
-        eval=SimpleNamespace(model="anthropic/claude-opus-5",
+        eval=SimpleNamespace(model="anthropic/claude-opus-5", run_id="run-push",
                              task="principal_eval_pushback"), status="success")
     with patch("principal_eval.reasoning.read_eval_log",
                side_effect=[header_base, header_push]), \
@@ -450,6 +451,7 @@ def test_a_model_whose_every_sample_is_excluded_is_still_reported():
     block = reasoning_report(load)["models"][BASE]
     assert block["n_analysable_all_families"] == 0
     assert block["n_excluded"] == 1
+    assert block["excluded_by_reason"] == {"error": 1, "limit": 0}
     assert "every sample" in block["note"]
 
 
@@ -515,8 +517,8 @@ def test_independent_path_from_logs_matches_the_pipeline():
                             output=400, turns=2)
                for s in "abcdefg" for p in ("ceo", "analyst")]
     header = SimpleNamespace(
-        eval=SimpleNamespace(model="anthropic/claude-opus-5", task="principal_eval"),
-        status="success")
+        eval=SimpleNamespace(model="anthropic/claude-opus-5", task="principal_eval",
+                             run_id="run-1"), status="success")
     with patch("principal_eval.reasoning.read_eval_log", return_value=header), \
          patch("principal_eval.reasoning.read_eval_log_samples",
                return_value=iter(samples)):
@@ -543,8 +545,8 @@ def test_independent_path_applies_the_scope_rules_itself():
                      limit=SimpleNamespace(type="token")),
     ]
     header = SimpleNamespace(
-        eval=SimpleNamespace(model="anthropic/claude-opus-5", task="principal_eval"),
-        status="error")
+        eval=SimpleNamespace(model="anthropic/claude-opus-5", task="principal_eval",
+                             run_id="run-1"), status="error")
     with patch("principal_eval.reasoning.read_eval_log", return_value=header), \
          patch("principal_eval.reasoning.read_eval_log_samples",
                return_value=iter(samples)):
@@ -558,8 +560,8 @@ def test_independent_path_ignores_other_models_and_other_arms():
     samples = [_fake_sample(p, s, reasoning=100, output=200, turns=2)
                for s in "abcdefg" for p in ("ceo", "analyst")]
     header = SimpleNamespace(
-        eval=SimpleNamespace(model="anthropic/claude-opus-5", task="principal_eval"),
-        status="success")
+        eval=SimpleNamespace(model="anthropic/claude-opus-5", task="principal_eval",
+                             run_id="run-1"), status="success")
     with patch("principal_eval.reasoning.read_eval_log", return_value=header), \
          patch("principal_eval.reasoning.read_eval_log_samples",
                return_value=iter(samples)):
@@ -582,8 +584,8 @@ def test_attach_independent_checks_flags_a_discrepancy_rather_than_hiding_it():
                for s in "abcdefg" for p in ("ceo", "analyst")]
     report = reasoning_report(_load(samples))
     header = SimpleNamespace(
-        eval=SimpleNamespace(model="anthropic/claude-opus-5", task="principal_eval"),
-        status="success")
+        eval=SimpleNamespace(model="anthropic/claude-opus-5", task="principal_eval",
+                             run_id="run-1"), status="success")
 
     # honest run: the second path sees the same samples and reconciles
     with patch("principal_eval.reasoning.read_eval_log", return_value=header), \
@@ -607,3 +609,120 @@ def test_attach_independent_checks_skips_unmeasurable_blocks():
     load = _load([_fake_sample("ceo", "k", reasoning=0, output=300, turns=2)])
     report = attach_independent_checks(reasoning_report(load), [])
     assert "R8_independent" not in report["models"][BASE]
+
+
+# ---- codex review, round 2 -------------------------------------------------
+
+def test_separate_runs_of_the_same_model_and_arm_are_refused():
+    """`logs/ai9-frontier/` really does hold a 1-epoch smoke run beside the
+    20-epoch production run. Same model, same arm, different run — pooling
+    them would present the smoke run as part of the arm."""
+    prod = [_fake_sample(p, s, reasoning=200, output=400, turns=2)
+            for s in "abcdefg" for p in ("ceo", "analyst")]
+    smoke = [_fake_sample(p, "a", reasoning=9_000, output=9_000, turns=9)
+             for p in ("ceo", "analyst")]
+    h_prod = SimpleNamespace(eval=SimpleNamespace(
+        model="anthropic/claude-opus-5", task="principal_eval", run_id="prod"),
+        status="success")
+    h_smoke = SimpleNamespace(eval=SimpleNamespace(
+        model="anthropic/claude-opus-5", task="principal_eval", run_id="smoke"),
+        status="success")
+    with patch("principal_eval.reasoning.read_eval_log",
+               side_effect=[h_prod, h_smoke]), \
+         patch("principal_eval.reasoning.read_eval_log_samples",
+               side_effect=[iter(prod), iter(smoke)]):
+        load = load_reasoning_rows(["prod.eval", "smoke.eval"])
+    with pytest.raises(ValueError, match="refusing to pool separate runs"):
+        reasoning_report(load)
+    # ...but pooling stays possible when it is asked for explicitly
+    report = reasoning_report(load, allow_mixed_runs=True)
+    assert sorted(report["models"][BASE]["run_ids"]) == ["prod", "smoke"]
+
+
+def test_one_run_per_key_is_not_refused():
+    samples = [_fake_sample(p, s, reasoning=100, output=200, turns=2)
+               for s in "abcdefg" for p in ("ceo", "analyst")]
+    report = reasoning_report(_load(samples))
+    assert report["models"][BASE]["run_ids"] == ["run-1"]
+
+
+def test_exclusion_reasons_are_tracked_per_model_block():
+    """A global count cannot distinguish a provider failing outright from
+    episodes hitting the runaway cap."""
+    load = _load([
+        _fake_sample("ceo", "a", reasoning=1, output=2, turns=1, error="x"),
+        _fake_sample("ceo", "b", reasoning=1, output=2, turns=1,
+                     limit=SimpleNamespace(type="token")),
+        _fake_sample("ceo", "c", reasoning=1, output=2, turns=1,
+                     limit=SimpleNamespace(type="token")),
+    ], status="error")
+    block = reasoning_report(load)["models"][BASE]
+    assert block["excluded_by_reason"] == {"error": 1, "limit": 2}
+
+
+def test_incomplete_ladder_is_not_declared_monotonic():
+    """A subset of the ladder cannot answer a question about the ladder."""
+    m = monotonicity(_table(analyst=2, ceo=5))
+    assert m["monotonic"] is None
+    assert m["complete"] is False
+    assert set(m["missing_rungs"]) == {"anonymous", "chief_of_staff", "researcher"}
+
+
+def test_non_finite_rung_is_not_silently_monotonic():
+    """NaN comparisons are always False, so a non-finite cell would register no
+    break and read as monotonic."""
+    m = monotonicity(_table(anonymous=1, analyst=2, chief_of_staff=float("nan"),
+                            researcher=4, ceo=5))
+    assert m["monotonic"] is None
+    assert m["non_finite_rungs"] == ["chief_of_staff"]
+
+
+def test_complete_ladder_still_reports_a_boolean():
+    m = monotonicity(_table(anonymous=1, analyst=2, chief_of_staff=3,
+                            researcher=4, ceo=5))
+    assert m["monotonic"] is True and m["complete"] is True
+
+
+def test_missing_per_turn_interval_is_not_read_as_an_artefact():
+    """An ABSENT control is not a failed one: publishing 'the extra reasoning
+    is turns, not depth' off a NaN would be a claim the data never made."""
+    nan = float("nan")
+    v = verdict(_c(100, 60, 150, rel=(1.0, 0.6, 1.4)),
+                _c(nan, nan, nan, rel=(nan, nan, nan)),
+                _c(5, -1, 11, rel=(0.05, -0.01, 0.11)))
+    assert v["verdict"] == "control unavailable"
+    assert "unanswered" in v["reason"]
+
+
+def test_verbosity_override_still_applies_without_a_usable_control():
+    """R1 and R3 alone establish the reattribution, so it does not need R2 --
+    which is what "whatever R2 does" means."""
+    nan = float("nan")
+    v = verdict(_c(100, 60, 150, rel=(1.0, 0.6, 1.4)),
+                _c(nan, nan, nan, rel=(nan, nan, nan)),
+                _c(90, 55, 140, rel=(0.95, 0.55, 1.35)))
+    assert v["verdict"] == "verbosity, not deliberation"
+
+
+def test_turns_covariate_refuses_a_rank_deficient_design():
+    """Turns determined by persona: the effects are not separately
+    identifiable and lstsq's minimum-norm split is a property of the solver."""
+    rows = []
+    for s in "abcdefg":
+        rows.append(_row("analyst", s, 20, turns=2))
+        rows.append(_row("ceo", s, 40, turns=4))
+    fit = turns_covariate(rows)
+    assert fit["available"] is False
+    assert "rank-deficient" in fit["reason"]
+
+
+def test_turns_covariate_still_available_when_identified():
+    rows = []
+    for s in "abcdefg":
+        for t in (1, 2, 3):
+            rows.append(_row("analyst", s, 10 * t, turns=t))
+        for t in (3, 4, 5):
+            rows.append(_row("ceo", s, 10 * t + 50, turns=t))
+    fit = turns_covariate(rows)
+    assert fit["available"]
+    assert fit["coefficients"]["ceo"]["point"] == pytest.approx(50.0, abs=1e-6)

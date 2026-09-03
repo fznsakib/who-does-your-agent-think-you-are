@@ -64,6 +64,13 @@ def main() -> None:
     picked.sort(key=lambda t: -t[0])
 
     print(f"# {model} — persona={persona} — top {top} by reasoning tokens")
+    if len(picked) < top:
+        # R7 requires FIVE transcripts per cell. Printing three under a "top 5"
+        # header lets an incomplete hand-read look like a completed gate, so
+        # this fails loudly rather than quietly under-delivering.
+        print(f"!! INCOMPLETE: only {len(picked)} analysable {persona} samples are "
+              f"available, fewer than the {top} requested. The R7 content check is "
+              f"NOT satisfied by this output.")
     for reasoning, s in picked[:top]:
         meta = s.metadata or {}
         turns = sum(1 for m in s.messages if m.role == "assistant")
@@ -92,6 +99,10 @@ def main() -> None:
                     print(f"  [text] {part.text.strip()}")
             for tc in (m.tool_calls or []):
                 print(f"  [tool] {tc.function}({tc.arguments})")
+
+    if len(picked) < top:
+        raise SystemExit(
+            f"R7 INCOMPLETE: {len(picked)}/{top} {persona} transcripts available")
 
 
 if __name__ == "__main__":

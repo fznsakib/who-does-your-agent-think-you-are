@@ -76,6 +76,12 @@ class ReasoningRow:
     # grouping key so a caller who points at a directory holding both gets two
     # labelled blocks rather than one silently pooled mean.
     arm: str
+    # Inspect's per-run identity. Two logs of the same model and arm can still
+    # be different runs -- a 1-epoch smoke run sits next to a 20-epoch
+    # production run in `logs/ai9-frontier/` right now -- and averaging them
+    # would present a smoke run as part of the arm. Carried so the report can
+    # refuse rather than silently pool.
+    run_id: str | None
     persona: str
     condition: str
     scenario: str
@@ -114,6 +120,7 @@ def load_reasoning_rows(paths: Iterable[str]) -> ReasoningLoad:
         header = read_eval_log(path, header_only=True)
         model = str(header.eval.model)
         arm = "pushback" if "pushback" in str(header.eval.task) else "base"
+        run_id = getattr(header.eval, "run_id", None)
         load.logs_loaded.append(path)
         require_all = header.status == "success"
         for s in read_eval_log_samples(path, all_samples_required=require_all):
@@ -138,6 +145,7 @@ def load_reasoning_rows(paths: Iterable[str]) -> ReasoningLoad:
             load.rows.append(ReasoningRow(
                 model=model,
                 arm=arm,
+                run_id=run_id,
                 persona=meta.get("persona"),
                 condition=meta.get("condition"),
                 scenario=meta.get("scenario"),
@@ -300,15 +308,29 @@ def turns_covariate(rows: list[ReasoningRow]) -> dict:
         return {"available": False, "reason": "reference persona or degrees of freedom missing"}
     others = [p for p in personas if p != REFERENCE]
     names = ["intercept"] + others + ["turns"]
+    X_full, _ = _design(rows, personas)
+    if np.linalg.matrix_rank(X_full) < X_full.shape[1]:
+        return {"available": False, "reason": (
+            "design matrix is rank-deficient — turns are collinear with the persona "
+            "indicators, so the persona and turn effects are not separately identifiable "
+            "in this arm. Any coefficient here would be a property of the solver."
+        )}
 
     def coef(idx: int) -> Callable[[list[ReasoningRow]], float]:
         def f(rs: list[ReasoningRow]) -> float:
             if len(rs) <= len(names):
                 return float("nan")
             X, y = _design(rs, personas)
-            # lstsq (SVD) rather than a normal-equation solve: a resample can
-            # draw a scenario set that makes a persona column collinear, and
-            # lstsq returns the minimum-norm solution instead of raising.
+            # A rank-deficient design is NOT identifiable: if turns are
+            # determined by persona (every analyst episode 2 turns, every ceo
+            # episode 4), the two effects cannot be separated and `lstsq` will
+            # still hand back a minimum-norm split. Publishing that would be
+            # reporting a property of the solver as a property of the model, so
+            # the draw is dropped instead. A resampled scenario set can be
+            # rank-deficient even when the full design is not, which is why the
+            # check lives here rather than only on the point fit.
+            if np.linalg.matrix_rank(X) < X.shape[1]:
+                return float("nan")
             beta, *_ = np.linalg.lstsq(X, y, rcond=None)
             return float(beta[idx])
         return f
@@ -336,10 +358,21 @@ def monotonicity(table: dict, key: str = "reasoning_per_sample") -> dict:
         for i in range(len(values) - 1)
         if values[i + 1] < values[i]
     ]
+    # A subset of the ladder cannot answer a question about the ladder. If a
+    # rung is missing (every sample for it excluded, or absent from the arm) or
+    # its point is non-finite, `monotonic` is None -- NOT True. NaN comparisons
+    # are always False, so a non-finite cell would otherwise register no break
+    # and silently read as monotonic.
+    missing = [p for p in LADDER if p not in table]
+    non_finite = [p for p, v in zip(rungs, values) if v != v]
+    complete = not missing and not non_finite
     return {
         "key": key,
         "ladder": list(zip(rungs, values)),
-        "monotonic": not breaks,
+        "complete": complete,
+        "missing_rungs": missing,
+        "non_finite_rungs": non_finite,
+        "monotonic": (not breaks) if complete else None,
         "breaks": breaks,
     }
 
@@ -351,6 +384,11 @@ def _excludes_zero(ci: dict) -> bool:
     if lo is None or hi is None or lo != lo or hi != hi:
         return False
     return lo > 0 or hi < 0
+
+
+def _finite_ci(ci: dict) -> bool:
+    lo, hi = ci.get("lo"), ci.get("hi")
+    return lo is not None and hi is not None and lo == lo and hi == hi
 
 
 def _overlap(a: dict, b: dict) -> bool:
@@ -371,6 +409,15 @@ def verdict(r1_gap: dict, r2_gap: dict, r3_gap: dict) -> dict:
     if not _excludes_zero(r1):
         label, why = "not established", (
             "the per-sample reasoning gap's 95% scenario-clustered interval includes zero"
+        )
+    elif not _finite_ci(r2):
+        # An ABSENT control is not a failed one. Falling through to the artefact
+        # branch here would publish "the extra reasoning is turns, not depth" on
+        # the strength of a NaN -- a claim the data never made.
+        label, why = "control unavailable", (
+            "the per-sample gap excludes zero, but the per-turn control has no usable "
+            "interval (a contrast persona has no positive-turn samples), so the "
+            "episode-length question is unanswered — neither survivor nor artefact"
         )
     elif _excludes_zero(r2) and (r1["point"] > 0) == (r2["point"] > 0):
         label, why = "survivor", (
@@ -395,6 +442,10 @@ def verdict(r1_gap: dict, r2_gap: dict, r3_gap: dict) -> dict:
         and (r1_gap["relative"]["point"] > 0) == (r3_gap["relative"]["point"] > 0)
         and _overlap(r1_gap["relative"], r3_gap["relative"])
     )
+    # Still applies to `control unavailable`: the override reattributes the
+    # effect using R1 and R3 alone, so it does not need R2 -- which is exactly
+    # what "whatever R2 does" means. Only `not established` is exempt, because
+    # there is no established effect to reattribute.
     if verbosity and label != "not established":
         label = "verbosity, not deliberation"
         why = (
@@ -534,7 +585,7 @@ def independent_relative_gap_from_logs(paths: Iterable[str], model: str, arm: st
 
 # ---- top level ------------------------------------------------------------
 
-def reasoning_report(load: ReasoningLoad) -> dict:
+def reasoning_report(load: ReasoningLoad, allow_mixed_runs: bool = False) -> dict:
     """The full R-series, one block per (model, arm).
 
     The arm is part of the key, never pooled away (plan rule 5): a directory
@@ -551,10 +602,30 @@ def reasoning_report(load: ReasoningLoad) -> dict:
     by_key: dict[tuple[str, str], list[ReasoningRow]] = defaultdict(list)
     for r in load.analysable():
         by_key[(r.model, r.arm)].append(r)
-    excluded_by_key: dict[tuple[str, str], int] = defaultdict(int)
+    # Per-key disposition BY REASON. A global count cannot distinguish "this
+    # provider errored out" from "these episodes hit the runaway cap", and on a
+    # multi-model arm the two would be indistinguishable in every block.
+    excluded_by_key: dict[tuple[str, str], dict[str, int]] = defaultdict(
+        lambda: {"error": 0, "limit": 0})
+    runs_by_key: dict[tuple[str, str], set] = defaultdict(set)
     for r in load.rows:
+        runs_by_key[(r.model, r.arm)].add(r.run_id)
         if r.excluded is not None:
-            excluded_by_key[(r.model, r.arm)] += 1
+            excluded_by_key[(r.model, r.arm)][r.excluded] += 1
+
+    if not allow_mixed_runs:
+        mixed = {f"{m} [{a}]": sorted(str(x) for x in runs)
+                 for (m, a), runs in runs_by_key.items() if len(runs) > 1}
+        if mixed:
+            raise ValueError(
+                "refusing to pool separate runs into one arm: "
+                + "; ".join(f"{k} draws on run_ids {v}" for k, v in mixed.items())
+                + ". Same model and arm does not mean same run -- a 1-epoch smoke run "
+                "sits beside a 20-epoch production run in logs/ai9-frontier/, and "
+                "averaging them would present the smoke run as part of the arm. Pass "
+                "the intended logs explicitly, or allow_mixed_runs=True if pooling is "
+                "genuinely intended."
+            )
 
     report: dict[str, Any] = {
         "logs_loaded": list(load.logs_loaded),
@@ -572,7 +643,10 @@ def reasoning_report(load: ReasoningLoad) -> dict:
             "model": model,
             "arm": arm,
             "n_analysable_all_families": len(rows),
-            "n_excluded": excluded_by_key.get(key, 0),
+            "run_ids": sorted(str(x) for x in runs_by_key.get(key, set()) if x),
+            "n_excluded": sum(excluded_by_key[key].values()) if key in excluded_by_key else 0,
+            "excluded_by_reason": dict(excluded_by_key[key]) if key in excluded_by_key
+                                  else {"error": 0, "limit": 0},
             "n_in_scope": len(scoped),
             "n_scenarios": len({r.scenario for r in scoped}),
             "measurable": total_reasoning > 0,
