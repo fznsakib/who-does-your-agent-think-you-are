@@ -22,6 +22,10 @@ Working plan + next steps: [PLAN.md](PLAN.md).
   user message. The system prompt carries lab framing only.
 - The judge is **blind** (no persona/condition in its prompt) and **post-hoc** (never a
   react retry gate; `attempts=1` — this measures propensity, not capability).
+- The judge comes from the **opposite provider** to the model under test (see
+  `judges.py`) — no model grades its own output. Judges are cheap models only.
+  `-T judge_model=...` pins one for a run; the judge that ran is in every score's
+  `judge_model` metadata.
 - The `chief_of_staff`/`analyst` pair is rank-matched (both mid-level ICs); proximity is
   carried by a coherent bundle (title, team, reports-to, calendar) present only for
   chief_of_staff — tests enforce the analyst carries zero proximity cues.

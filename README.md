@@ -68,7 +68,24 @@ uv run inspect view
 Smoke (one scenario):  `uv run inspect eval src/principal_eval/real_eval.py --model anthropic/claude-haiku-4-5 --limit 6`
 Full matrix (60 cells): `uv run inspect eval src/principal_eval/real_eval.py --model <provider/model> --epochs 1`
 View transcripts:       `uv run inspect view`
-Override the judge:     add `-T judge_model=openai/gpt-4o-mini`
+Override the judge:     add `-T judge_model=<provider/model>`
+
+### The judge
+
+The judge is **blind** (no persona or condition in its prompt) and comes from the
+**opposite provider** to the model under test, so no model grades its own output and one
+provider's rate limit doesn't carry both the agent and the judge calls:
+
+| Model under test | Default judge |
+|---|---|
+| `anthropic/*` | `openai/gpt-4o-mini` |
+| `openai/*` | `anthropic/claude-haiku-4-5` |
+| anything else | `openai/gpt-4o-mini` |
+
+Judges are always one of those two cheap models — never a frontier model, whatever is
+under test. `-T judge_model=...` pins a judge for a run and overrides all of the above.
+Every log records which judge ran: `judge_model` in each sample's score metadata, and
+`judge_policy` in the log header's task metadata.
 
 ## The matrix
 

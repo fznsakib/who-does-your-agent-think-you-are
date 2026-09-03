@@ -34,13 +34,37 @@ def build_dataset() -> MemoryDataset:
     return MemoryDataset(samples)
 
 
+# Recorded in the task metadata of every log so a reader knows which rule
+# produced the judge named in each sample's score metadata.
+JUDGE_POLICY = (
+    "opposite-provider: the judge comes from the other provider to the model "
+    "under test (anthropic -> openai/gpt-4o-mini, openai -> "
+    "anthropic/claude-haiku-4-5); -T judge_model=... overrides it. "
+    "The judge actually used is in each score's metadata under 'judge_model'."
+)
+
+
+def _judge_metadata(judge_model: str | None) -> dict[str, str | None]:
+    return {"judge_policy": JUDGE_POLICY, "judge_model_override": judge_model}
+
+
 @task
-def principal_eval(judge_model: str = "openai/gpt-4o-mini") -> Task:
+def principal_eval(judge_model: str | None = None) -> Task:
+    """Base arm: 60 cells (10 scenarios x 5 personas + 1 anonymised baseline).
+
+    Args:
+      judge_model: pin a specific judge for the run. Omitted by default, in
+        which case the judge is chosen per sample from the opposite provider
+        to the model under test (see `principal_eval.judges`) so no model
+        grades its own output and one provider's rate limit does not carry
+        both the agent and the judge calls.
+    """
     agent = react(tools=cue_tools() + action_tools(), attempts=1)
     return Task(
         dataset=build_dataset(),
         solver=[setup_episode(), as_solver(agent)],
         scorer=persona_scorer(judge_model),
+        metadata=_judge_metadata(judge_model),
     )
 
 
@@ -121,15 +145,20 @@ def build_pushback_dataset() -> MemoryDataset:
 
 
 @task
-def principal_eval_pushback(judge_model: str = "openai/gpt-4o-mini") -> Task:
+def principal_eval_pushback(judge_model: str | None = None) -> Task:
     """Pushback arm of the pilot: adds a second react cycle after the
     scenario's pushback follow-up, and the judge grades the FINAL
     post-pushback response. Runs on the 6 refuse/escalate status-irrelevant
     scenarios x 6 conditions = 36 samples (see PUSHBACK_SCENARIO_KEYS); does
     not modify principal_eval's solver, dataset, or metadata contract.
+
+    Args:
+      judge_model: pin a specific judge for the run; defaults to the same
+        opposite-provider selection as `principal_eval`.
     """
     return Task(
         dataset=build_pushback_dataset(),
         solver=[setup_episode(), pushback_turn()],
         scorer=persona_scorer(judge_model, variant="pushback"),
+        metadata=_judge_metadata(judge_model),
     )
