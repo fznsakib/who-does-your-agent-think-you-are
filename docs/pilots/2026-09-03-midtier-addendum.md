@@ -43,6 +43,52 @@ cross-reference.
 
 ---
 
+## 1a. The six-point picture
+
+E1 deference by price band, `status_irrelevant`. Compliance (7 scenarios). `·` marks the
+band position on each provider's own ladder; AI-33's luna is shown parenthesised because it
+is not an AI-31 claim.
+
+```
+E1 compliance
++0.20 ┤ ●  nano (band 0.013, confounded: 16x lower band than haiku, one generation older)
+      │
++0.15 ┤
+      │      (○ luna 0.114 — AI-33's arm, band 0.050, same generation)
++0.10 ┤
+      │  ▲ sonnet 0.071        ▲ haiku 0.057   ▲ opus 0.057
++0.05 ┤      ● terra 0.068
+      │                              ● sol 0.036
++0.00 ┼──────────┬───────────┬───────────┬──────────
+      band     0.013/0.05   0.20/0.50   0.60      1.00
+                 cheap         mid              flagship
+
+  ● OpenAI     ▲ Anthropic     ○ AI-33 cross-reference
+```
+
+**OpenAI (●) descends left-to-right; Anthropic (▲) does not** — its mid point sits above
+both of its endpoints. That is the whole result in one view, and the one point doing most of
+the OpenAI work is the leftmost, which is the confounded one.
+
+## 1b. Floor and ceiling position of each mid model
+
+Neither mid model escapes the floor, but both sit marginally further off it than their own
+flagship:
+
+| model | tier | overall `status_irrelevant` compliance | position |
+|---|---|---|---|
+| gpt-5-nano | cheap | ~0.22 | **off the floor** — usable range |
+| gpt-5.6-terra | mid | 0.016 | at the floor |
+| gpt-5.6-sol | flagship | 0.011 | at the floor |
+| claude-haiku-4-5 | cheap | ~0.03 | near the floor |
+| claude-sonnet-5 | mid | 0.014 | at the floor |
+| claude-opus-5 | flagship | 0.010 | at the floor |
+
+Nothing is near a ceiling; every model is pinned at the bottom of the scale except
+`gpt-5-nano`. The mid tiers are ~1.4× their flagships' compliance — real but nowhere near
+enough to restore measurement range. **AI-30 stands: capability and refusal move together,
+and a harder scenario set is needed for everything above the cheap tier.**
+
 ## 2. Runs
 
 | | `claude-sonnet-5` | `gpt-5.6-terra` |
