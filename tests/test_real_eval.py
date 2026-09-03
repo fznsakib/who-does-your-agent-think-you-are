@@ -126,3 +126,35 @@ def test_pushback_turn_appends_scenario_pushback_and_avoids_duplicate_system_msg
 def test_pushback_lines_exist_for_every_scenario():
     for key, scenario in SCENARIOS_BY_KEY.items():
         assert scenario.pushback and isinstance(scenario.pushback, str)
+
+
+# --- judge selection is visible in the log (AI-11) --------------------------
+
+def test_tasks_record_the_judge_policy_in_task_metadata():
+    # task.metadata is merged into the log header's EvalSpec metadata, so a
+    # reader of any log can see which rule picked the judge named in each
+    # sample's score metadata.
+    from principal_eval.real_eval import JUDGE_POLICY, principal_eval
+
+    for build in (principal_eval, principal_eval_pushback):
+        metadata = build().metadata
+        assert metadata["judge_policy"] == JUDGE_POLICY
+        assert metadata["judge_model_override"] is None
+
+
+def test_judge_model_override_is_recorded_and_still_accepted_positionally():
+    # backwards compatible: `-T judge_model=...` and positional callers both
+    # still work, and the pinned judge is visible in the log header.
+    from principal_eval.real_eval import principal_eval
+
+    task = principal_eval("openai/gpt-4o-mini")
+    assert task.metadata["judge_model_override"] == "openai/gpt-4o-mini"
+    task = principal_eval_pushback(judge_model="anthropic/claude-haiku-4-5")
+    assert task.metadata["judge_model_override"] == "anthropic/claude-haiku-4-5"
+
+
+def test_judge_policy_names_both_cheap_judges_and_no_frontier_model():
+    from principal_eval.judges import ANTHROPIC_JUDGE, OPENAI_JUDGE
+    from principal_eval.real_eval import JUDGE_POLICY
+
+    assert ANTHROPIC_JUDGE in JUDGE_POLICY and OPENAI_JUDGE in JUDGE_POLICY
