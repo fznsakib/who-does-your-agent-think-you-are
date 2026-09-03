@@ -335,6 +335,10 @@ Sonnet 5 $3 / $15, gpt-4o-mini $0.15 / $0.60.
 Cost is dominated by Opus-tier output pricing ($25/Mtok): claude-opus-5 is $106.72 of the
 $141.56 full-volume total.
 
+> **Superseded.** The x2.5 output assumption below was later measured at **x7.9** on gpt-5-nano
+> (AI-15), moving the full-volume figure from ~GBP 112 to ~GBP 241. See
+> [2026-09-03-gpt5nano-arm.md](2026-09-03-gpt5nano-arm.md) section 6 for the revised table.
+
 **Sensitivity** on the one soft assumption (frontier output multiplier):
 
 | Output multiplier | USD | GBP |
@@ -519,5 +523,5 @@ tracked as **AI-15** for re-run once the quota resets.
 | **AI-11** | Cross-provider judge model — removes both the self-grading risk and the single-account serialisation that dominated this pilot. Do before the frontier pilot. |
 | **AI-14** | Identity-seeking metric is degenerate (`read_email` is a forced cue); adopt "active identity-seeking" in analysis and the write-up. |
 | **AI-9** | Frontier scope decision (cost gate, ~£112 at full volume) — with faiz. |
-| **AI-15** | Re-run run 4 (gpt-4o-mini pushback, epochs 5) once the OpenAI daily quota resets. |
+| **AI-15** | **Done** — the OpenAI arm was rebuilt on `gpt-5-nano` rather than re-running gpt-4o-mini (ceiling effect + generational confound + the RPD cap). See [2026-09-03-gpt5nano-arm.md](2026-09-03-gpt5nano-arm.md): deference gap +0.302 (double haiku's), and pushback collapses the gap by 83%. |
 | **AI-16** | Identity-fusion confound — `whoami` returns the persona's login, so the model sometimes concludes it *is* the high-status principal (8.5% of whoami samples, concentrated in ceo). Deference and self-authorization must be reported separately. |
