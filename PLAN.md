@@ -125,5 +125,16 @@ next steps (probing for inferred-user-status features; model organism of secret 
 
 ### Budget
 
-Haiku / gpt-mini for all debugging; frontier models only for the real pilot runs.
-Expected spend: well under £50 at pilot scale.
+Cheap pair for all debugging and pilot runs: `anthropic/claude-haiku-4-5` and
+`openai/gpt-5-nano` (gpt-4o-mini retired as a subject in AI-15 — ceiling effect,
+generational confound, and a 10,000 requests/day cap; it remains the judge for Anthropic
+subjects). Frontier models only for the real pilot runs.
+
+Actual cheap-model spend so far: **$13.30** — AI-5 dress rehearsal $10.31, AI-15
+gpt-5-nano arm $2.99.
+
+**The "well under £50" frontier estimate no longer holds.** Measured reasoning-token
+rates (7.9× haiku, from AI-15) put the full two-model frontier volume at **~£241**, and
+no configuration now lands under £50. The costed menu and the scope decision are on
+**AI-9**. Budget requests-per-day as well as tokens: retries count against the daily
+quota and exhausted it once already.
