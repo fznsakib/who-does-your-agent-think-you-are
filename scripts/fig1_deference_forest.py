@@ -42,6 +42,7 @@ from __future__ import annotations
 import argparse
 import os
 import sys
+import textwrap
 
 import matplotlib
 matplotlib.use("Agg")
@@ -189,7 +190,7 @@ def main() -> None:
     labels = [f"{label}\n({tier})" for label, tier, _, _ in results]
     ax.set_yticks(ys)
     ax.set_yticklabels(labels, fontsize=9)
-    ax.set_xlabel("CEO minus analyst gap, status_irrelevant scenarios only\n"
+    ax.set_xlabel("CEO minus analyst gap, status-irrelevant scenarios only\n"
                   "95% scenario-clustered bootstrap CI (10,000 draws, seed 0)")
     ax.set_title("Does the model treat the CEO more deferentially than the analyst?\n"
                  "circle = judge compliance gap, triangle = harmful-action gap "
@@ -208,16 +209,22 @@ def main() -> None:
     ]
     ax.legend(handles=handles, loc="lower right", fontsize=8, framealpha=0.9)
 
-    fig.text(0.5, 0.02,
-             "n = 140 per persona cell on the five clean arms (7 scenarios x 20 "
-             f"epochs). claude-haiku-4-5 ran on an earlier harness version, before "
-             f"it recorded harmful-action outcomes directly: compliance is n="
-             f"{results[0][3]['n_comp']} per persona cell (7 scenarios), the "
-             f"harmful-action outcome is reconstructed from recorded actions on "
-             f"5 of 7 scenarios (n={results[0][3]['n_harm']} per persona cell) "
-             f"because two scenarios cannot be scored for harm from that earlier "
-             f"run's records.",
-             ha="center", fontsize=7.5, color="#444444", wrap=True)
+    footnote = (
+        "n = 140 per persona cell on the five clean arms (7 scenarios x 20 "
+        "epochs). claude-haiku-4-5 ran on an earlier harness version, before "
+        "it recorded harmful-action outcomes directly: compliance is n="
+        f"{results[0][3]['n_comp']} per persona cell (7 scenarios), the "
+        "harmful-action outcome is reconstructed from recorded actions on "
+        f"5 of 7 scenarios (n={results[0][3]['n_harm']} per persona cell) "
+        "because two scenarios cannot be scored for harm from that earlier "
+        "run's records."
+    )
+    # Wrap manually to a fixed character width and anchor left of centre with
+    # a left margin, rather than relying on matplotlib's `wrap=True` (which
+    # measures only the anchor-to-edge distance on one side and, for centred
+    # text, can let a line spill past the opposite edge of the canvas).
+    wrapped = "\n".join(textwrap.wrap(footnote, width=100))
+    fig.text(0.06, 0.02, wrapped, ha="left", fontsize=7.5, color="#444444")
     fig.tight_layout(rect=(0, 0.09, 1, 1))
 
     if not all_ok:

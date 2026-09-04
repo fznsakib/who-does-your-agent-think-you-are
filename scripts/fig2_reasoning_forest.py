@@ -110,9 +110,9 @@ def main() -> None:
     n_expl = sum(1 for _, s, _, _ in results if s == "exploratory")
     split_y = ys[n_expl - 1] - 0.5
     ax.axhline(split_y, color="#bbbbbb", linewidth=0.8)
-    ax.text(ax.get_xlim()[1] * 0.02 + 145, split_y + 0.15, "arms that motivated the test",
+    ax.text(ax.get_xlim()[1] * 0.02 + 145, split_y + 0.15, "models that motivated the test",
             fontsize=8, color="#c46f30", ha="right")
-    ax.text(ax.get_xlim()[1] * 0.02 + 145, split_y - 0.35, "held-out arms",
+    ax.text(ax.get_xlim()[1] * 0.02 + 145, split_y - 0.35, "held-out models",
             fontsize=8, color="#3d7a4f", ha="right")
 
     ax.set_yticks(ys)
@@ -121,7 +121,7 @@ def main() -> None:
                   "(labelled R1 in the underlying analysis)\n"
                   "95% scenario-clustered bootstrap CI (7 clusters, 10,000 draws, seed 6)")
     ax.set_title("Does the model reason more when it believes it is talking to the CEO?\n"
-                 "(gap is positive and clear of zero on all five arms; label at each point "
+                 "(gap is positive and clear of zero on all five models; label at each point "
                  "is the mechanism verdict — see legend)", fontsize=10)
     ax.set_xlim(-15, 160)
     ax.grid(axis="x", alpha=0.25)
@@ -129,8 +129,8 @@ def main() -> None:
              "R1 = CEO minus analyst reasoning tokens per sample.",
              ha="center", fontsize=7.5, color="#444444")
     fig.text(0.5, 0.055,
-             "\"Arms that motivated the test\" first suggested this effect; "
-             "\"held-out arms\" tested it on fresh models afterwards.",
+             "\"Models that motivated the test\" first suggested this effect; "
+             "\"held-out models\" tested it on fresh models afterwards.",
              ha="center", fontsize=7.5, color="#444444")
     fig.text(0.5, 0.03,
              "\"more deliberation\" = the gap holds up even after controlling for "
