@@ -222,9 +222,11 @@ scenarios only. The five clean rows reuse `ai9_frontier_readout.load()` /
 cannot silently drift from that table. claude-haiku-4-5 ran on an earlier
 harness version and is drawn grey with hollow/hatched markers, labelled
 "earlier harness version; shown for reference": its compliance gap uses all 7
-status_irrelevant scenarios (n = 140 total across personas, same as the clean
-arms), but its harmful-action gap is read on only 5 of those 7 scenarios —
-two are dropped because that run predates the structural predicates that make
+status_irrelevant scenarios, but at n = 70 per persona cell (7 scenarios x 10
+epochs) versus the clean arms' n = 140 (7 scenarios x 20 epochs) — half the
+epochs, not a comparable denominator. Its harmful-action gap is read on only
+5 of those 7 scenarios, at n = 50 per persona cell — two scenarios are dropped
+because that run predates the structural predicates that make
 their harm outcome decidable, exactly the exclusion `ai31_tier_table.py`
 applies to every legacy arm. The script prints every plotted estimate/CI next
 to the published Table 1 (or, for haiku, the tier-table) value with PASS/FAIL,

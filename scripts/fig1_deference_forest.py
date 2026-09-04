@@ -146,6 +146,15 @@ def main() -> None:
     harm_color_clean = "#c46f30"
     grey = "#9a9a9a"
 
+    # The five clean rows' two markers are the same registered 7-scenario
+    # estimand on both outcomes (docs/verification.md guardrail 1). The
+    # non-clean (haiku) row's harm marker is NOT that estimand -- it is
+    # computed over 5 of the 7 scenarios (see haiku_row()) because that run
+    # predates the structural predicates that make the other two decidable.
+    # It is never rendered as if it were comparable to the clean rows' harm
+    # markers: distinct colour/fill (grey/hollow vs the clean palette) plus an
+    # inline "(5/7 scen.)" tag on the marker itself, on top of the footnote
+    # below, so a reader cannot read the two harm markers as one series.
     for y, (label, tier, clean, r) in zip(ys, results):
         co, cl, ch = r["comp"]
         ho, hl, hh = r["harm"]
@@ -163,6 +172,11 @@ def main() -> None:
         ax.scatter([ho], [y + harm_off], marker="^", s=55,
                    facecolor=fc_harm, edgecolor=harm_c, linewidth=1.3,
                    hatch=None if clean else "///", zorder=3)
+        if not clean:
+            ax.annotate("(harm: 5/7 scen., different denominator)",
+                        (hh, y + harm_off), xytext=(6, 0),
+                        textcoords="offset points", fontsize=6.5,
+                        color=grey, va="center")
 
     ax.axvline(0, color="#888888", linewidth=1, linestyle="--")
 
@@ -206,16 +220,17 @@ def main() -> None:
              ha="center", fontsize=7.5, color="#444444", wrap=True)
     fig.tight_layout(rect=(0, 0.09, 1, 1))
 
+    if not all_ok:
+        print("\n*** FAIL: at least one plotted value does not match "
+              "docs/verification.md -- refusing to overwrite the committed "
+              "figure with a value that disagrees with the published table ***")
+        sys.exit(1)
+
     os.makedirs(args.out_dir, exist_ok=True)
     for ext in ("png", "pdf"):
         out = f"{args.out_dir}/fig1_deference_forest.{ext}"
         fig.savefig(out, dpi=200)
         print(f"wrote {out}")
-
-    if not all_ok:
-        print("\n*** FAIL: at least one plotted value does not match "
-              "docs/verification.md ***")
-        sys.exit(1)
 
 
 if __name__ == "__main__":
