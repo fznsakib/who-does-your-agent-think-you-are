@@ -98,6 +98,7 @@ every judge-derived headline.
 | Disposition: 0 excluded samples on all five arms (1200/1200 each); rule-15 bounds equal the point estimates | 0 | frontier-base §3, midtier-addendum §2, ai33-luna-endpoint §3 |
 | Judge-parse fallbacks: 0 across all arms (every explanation carries `GRADE:`) | 0 | frontier-base §3 |
 | PARTIAL sensitivity: sign-stable everywhere; terra produced the project's first 5 PARTIAL grades | sign-stable | frontier-base §4, midtier-addendum §3 |
+| **AI-50: per-model authorised/unauthorised compliance means underlying the E3 gap** (`fig_calibration.py` left panel). Authorised means range 0.750-0.942 across the five models (Table 1's own 0.625-1.000 range at row "Headline reading" above is a *different, coarser* statistic: it is the authorised-persona aggregate compliance -- opus-5's ceo-persona aggregate is 0.625 (n=40) and its researcher-persona aggregate is 1.000 (n=20), per the frontier-base readout's E3 cell-detail table -- not a per-scenario point; the actual per-scenario E3 points range 0.250-1.000, per that same readout's per-scenario table). Unauthorised is 0.000 on four of the five, and 0.013 (3 of 240 role_gated-identified-unauthorised cells) on terra -- the "unauthorised 0.000 on every model" reading in Table 1's headline row is a rounded qualitative summary, not exact on terra. Command: `uv run python scripts/fig_calibration.py` (prints this table before writing the figure) | sonnet-5 0.867/0.000, opus-5 0.750/0.000, luna 0.942/0.000, terra 0.917/0.013, sol 0.917/0.000 | fig_calibration.py output |
 
 ## Table 3 — R-series: reasoning expenditure by inferred user status
 
@@ -269,54 +270,119 @@ signals, all seven arms) is printed by the command above and reproduced in
 
 ## Figures
 
+One figure per finding — Discovery, Deference, Calibration — plus two
+appendix figures kept for their fuller detail.
+
 ```bash
-uv run python scripts/fig1_deference_forest.py         # docs/pilots/figures/fig1_deference_forest.*
-uv run python scripts/fig1_compliance_by_persona.py    # docs/pilots/figures/fig1_compliance_by_persona.*
-uv run python scripts/fig2_reasoning_forest.py          # docs/pilots/figures/fig2_*
-uv run python scripts/fig3_scenario_heatmap.py          # docs/pilots/figures/fig3_*
+uv run python scripts/fig_discovery.py                 # docs/pilots/figures/fig_discovery.*
+uv run python scripts/fig_deference.py                  # docs/pilots/figures/fig_deference.*
+uv run python scripts/fig_calibration.py                # docs/pilots/figures/fig_calibration.*
+uv run python scripts/fig1_compliance_by_persona.py    # appendix: docs/pilots/figures/fig1_compliance_by_persona.*
+uv run python scripts/fig3_scenario_heatmap.py          # appendix: docs/pilots/figures/fig3_*
 ```
 
-Fig 1 (`fig1_deference_forest.py`, the headline figure): the CEO−analyst gap
-itself, one panel, one row per model, ordered provider then tier —
+### Discovery — `fig_discovery.py`
+
+Carries the discovery claim: does the agent look up who is asking beyond the
+forced initial identity read? One row per model, ordered provider then tier —
 claude-haiku-4-5, claude-sonnet-5, claude-opus-5, gpt-5.6-luna, gpt-5.6-terra,
-gpt-5.6-sol, with a thin rule between the two providers' blocks. Each row
-carries two markers with a 95% scenario-clustered CI whisker: judge
-compliance gap (circle) and harmful-action gap (triangle), status_irrelevant
-scenarios only. The five clean rows reuse `ai9_frontier_readout.load()` /
-`estimands()` / `bootstrap()` — Table 1's own functions, so a plotted value
-cannot silently drift from that table. claude-haiku-4-5 ran on an earlier
-harness version and is drawn grey with hollow/hatched markers, labelled
-"earlier harness version; shown for reference": its compliance gap uses all 7
-status_irrelevant scenarios, but at n = 70 per persona cell (7 scenarios x 10
-epochs) versus the clean arms' n = 140 (7 scenarios x 20 epochs) — half the
-epochs, not a comparable denominator. Its harmful-action gap is read on only
-5 of those 7 scenarios, at n = 50 per persona cell — two scenarios are dropped
-because that run predates the structural predicates that make
-their harm outcome decidable, exactly the exclusion `ai31_tier_table.py`
-applies to every legacy arm. The script prints every plotted estimate/CI next
-to the published Table 1 (or, for haiku, the tier-table) value with PASS/FAIL,
-and exits non-zero on any FAIL.
+gpt-5.6-sol (no gpt-5-nano — a cheap development subject, not a tier-ladder
+endpoint), with the same provider rule as `fig_deference.py` (between
+claude-opus-5 and gpt-5.6-luna). Two marks per row: the CEO and analyst rates
+of active identity seeking, status_irrelevant only, each carrying a small
+fixed vertical offset so a row where the two coincide (sonnet-5 and opus-5,
+both 1.000) still shows two markers. The pooled-overall rate is checked
+against Table 6 by the script but not plotted. Reuses
+`principal_eval.analysis.load_rows` / `scored` / `identity_seeking_rate` —
+the functions behind Table 6 — so a plotted rate cannot drift from that
+table. The script validates each arm's log is a complete, terminal run
+(status `success`, loaded sample count matching the header's total) before
+computing rates, then prints every plotted rate next to the Table 6 value
+with PASS/FAIL, and exits non-zero on any FAIL.
 
-Command: `uv run python scripts/fig1_deference_forest.py --logs logs`
+Command: `uv run python scripts/fig_discovery.py --logs logs`
 
-Fig 1 appendix (`fig1_compliance_by_persona.py`): the same per-persona
-compliance breakdown the forest plot's gaps are computed from — one panel per
-model, SI only, six persona bars with n and clustered CIs each. Five clean
-arms plus claude-haiku-4-5 as a visually-separated reference panel (earlier
-harness version, n = 70 per cell).
+### Deference — `fig_deference.py`
 
-Fig 2: forest of R1 across the five arms, split exploratory vs confirmatory,
-with the R6 verdict per arm. Reuses the R-series module (`principal_eval.reasoning`);
-does not reparse logs by hand.
+Carries the deference claim: the CEO−analyst gap itself, one panel, one row
+per model, ordered provider then tier — claude-haiku-4-5, claude-sonnet-5,
+claude-opus-5, gpt-5.6-luna, gpt-5.6-terra, gpt-5.6-sol, with a thin rule
+between the two providers' blocks, every row drawn in the same colours and
+marker style. Each row carries two markers with a 95% scenario-clustered CI
+whisker: judge compliance gap (circle) and harmful-action gap (triangle),
+status_irrelevant scenarios only. The five clean rows reuse
+`ai9_frontier_readout.load()` / `estimands()` / `bootstrap()` — Table 1's own
+functions, so a plotted value cannot silently drift from that table.
+claude-haiku-4-5 ran on an earlier harness version: its compliance gap uses
+all 7 status_irrelevant scenarios at n = 70 observations per persona cell (7
+scenarios x 10 epochs; half the clean arms' n = 140 observations, 7 scenarios
+x 20 epochs each), and its harmful-action gap is read on only 5 of those
+7 scenarios at n = 50 per persona cell (two scenarios are dropped because
+that run predates the structural predicates that make their harm outcome
+decidable — the same exclusion `ai31_tier_table.py` applies to every legacy
+arm). This narrower estimand is not marked on the figure itself — it
+belongs in the prose caption — but the script's own PLOTTED vs PUBLISHED
+check and printed output preserve it. The script prints every plotted
+estimate/CI next to the published Table 1 (or, for haiku, the tier-table)
+value with PASS/FAIL, and exits non-zero on any FAIL.
 
-Fig 3: the CEO−analyst harm gap, one scenario at a time, five clean arms plus
-claude-haiku-4-5 as a labelled reference column (two of its scenarios shown
-"not scored", where the harm outcome cannot be reconstructed from that
-earlier run's records). ILLUSTRATIVE — n = 20 per cell on the five clean arms,
-no intervals — the registered estimand is Table 1's pooled E1. haiku is NOT
-n = 20: its cells carry n = 10 per persona. The colour scale's symmetric
-limits are sized from the largest observed |gap|, not hard-coded, so no cell
-saturates past the colourbar's endpoint.
+Command: `uv run python scripts/fig_deference.py --logs logs`
+
+### Calibration — `fig_calibration.py`
+
+Carries the calibration claim, two panels.
+
+Left: the role-gated positive control. One row per model, provider-then-tier
+order (claude-sonnet-5, claude-opus-5, gpt-5.6-luna, gpt-5.6-terra,
+gpt-5.6-sol — no claude-haiku-4-5, whose E3 is not in any committed
+readout). Two marks per row: mean compliance in the authorised cell and the
+unauthorised cell, `role_gated` + `identified` only. Reuses
+`ai9_frontier_readout.load()` and `cluster_mean()` — Table 1's own loader and
+estimator — so authorised minus unauthorised cannot drift from the published
+E3 gap. The per-model authorised/unauthorised pair is not itself tabulated
+elsewhere (only the gap is), so this script computed it from the logs and the
+five pairs are recorded in Table 2 above, with the command that reproduces
+them. Authorised compliance ranges 0.750–0.942 across the five models;
+unauthorised is 0.000 on four of them and 0.013 on terra (3 of 240 rows) —
+plotted as the real per-model value, not assumed to be exactly zero
+everywhere.
+
+Right: the reasoning-token forest (adapted from `fig2_reasoning_forest.py`),
+stripped of per-point text — no value labels, no interval text, no verdict
+words, no evidentiary-status annotations, no footnote. The
+exploratory/confirmatory split (per the AI-32 pre-registration in
+`docs/analysis-plan.md` §J) is a thin horizontal rule only, and the mechanism
+verdict is encoded as a filled marker ("more deliberation" — the gap survives
+a per-turn control) versus a hollow marker ("verbosity, not separable" — it
+does not), with a two-item legend. Row order is provider-then-tier within
+each evidentiary-status group (opus-5, sol — exploratory; sonnet-5, luna,
+terra — confirmatory), so the split stays one contiguous rule. Reuses
+`principal_eval.reasoning.load_reasoning_rows` / `reasoning_report` — the
+pipeline behind `scripts/ai32_reasoning_readout.py` and
+`fig2_reasoning_forest.py` — so the plotted intervals and verdict encoding
+cannot drift from Table 3.
+
+The script prints every plotted value next to the published Table 1/Table 3
+value with PASS/FAIL, and exits non-zero on any FAIL.
+
+Command: `uv run python scripts/fig_calibration.py --logs logs`
+
+### Appendix figures
+
+`fig1_compliance_by_persona.py`: the same per-persona compliance breakdown
+the Deference figure's gaps are computed from — one panel per model, SI only,
+six persona bars with n and clustered CIs each. Five clean arms plus
+claude-haiku-4-5 as a visually-separated reference panel (earlier harness
+version, n = 70 per cell).
+
+`fig3_scenario_heatmap.py`: the CEO−analyst harm gap, one scenario at a time,
+five clean arms plus claude-haiku-4-5 as a labelled reference column (two of
+its scenarios shown "not scored", where the harm outcome cannot be
+reconstructed from that earlier run's records). ILLUSTRATIVE — n = 20 per
+cell on the five clean arms, no intervals — the registered estimand is
+Table 1's pooled E1. haiku is NOT n = 20: its cells carry n = 10 per persona.
+The colour scale's symmetric limits are sized from the largest observed
+|gap|, not hard-coded, so no cell saturates past the colourbar's endpoint.
 
 Loader: the five clean arms are read with `ai9_frontier_readout.load()` —
 Table 1's own loader (strict `all_samples_required` on a successful log,
@@ -330,11 +396,10 @@ complete, natively-scored logs they read identical rows — which the exactness
 check below verifies empirically. Both loaders take the lexicographically-last
 `.eval` file in a directory, so the script globs each arm's directory itself
 first and refuses to run if it finds anything but exactly one `.eval` file —
-the same multi-run-pooling failure mode `reasoning_report` refuses for
-Figure 2.
+the same multi-run-pooling failure mode `reasoning_report` refuses.
 
 Command (log paths as Table 1 plus `logs/ai5-pilot/haiku-base`; not part of
-`verify_headline_numbers.py`'s sections, same as Figs 1–2):
+`verify_headline_numbers.py`'s sections, same as the three figures above):
 `uv run python scripts/fig3_scenario_heatmap.py --logs logs`
 
 Exactness check (printed by the script): each clean arm's seven per-scenario
