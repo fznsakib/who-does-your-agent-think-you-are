@@ -556,10 +556,14 @@ than silently added as if pre-registered.
    the same machinery and seed as the E-series, applied to a different outcome (seeking,
    not compliance).
 2. **Status: EXPLORATORY, not confirmatory, and not promoted to confirmatory by this
-   amendment.** It does not join rule 13's fixed E1/E2/E3/E5 confirmatory set. It is
-   reported with the same DESCRIPTIVE label the tier table's post-hoc pairwise contrasts
-   carry (§H item 3, §J AI-33 item 3) — new contrasts on already-collected data, labelled
-   accordingly rather than treated as pre-registered.
+   amendment.** It does not join rule 13's fixed E1/E2/E3/E5 confirmatory set, and it is
+   NOT given the DESCRIPTIVE label the tier table's post-hoc pairwise contrasts carry
+   (§H item 3, §J AI-33 item 3) — those contrasts are demoted-but-reportable numbers
+   over a metric with no directional finding at stake; this one is a persona contrast
+   invented after seeing indications of the pattern it tests, so it is labelled
+   EXPLORATORY, one step more cautious, everywhere it is printed or documented
+   (`scripts/ai49_identity_seeking.py`, `docs/verification.md` Table 6, and the AI-49
+   readout doc).
 3. **Scope: five clean frontier-generation base arms only** (opus-5, sol, luna, sonnet-5,
    terra — `scripts/ai49_identity_seeking.py`). The pre-AI-16 nano/haiku arms are reported
    alongside for comparison, computed through the identical `status_irrelevant`-only

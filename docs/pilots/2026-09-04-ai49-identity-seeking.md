@@ -169,7 +169,11 @@ legacy arms — the model investigates the CEO *at least as much* as the analyst
 not less — and two of the three (sol, terra) have a CI that excludes zero. Both
 legacy arms, recomputed SI-only, show the inversion with a CI excluding zero for
 nano (−0.310 [−0.538, −0.100]) and a CI spanning zero for haiku (−0.043
-[−0.200, +0.057]); every clean-arm point estimate and interval sits on the
-opposite side of zero from nano's. `cue_read_before_action` given acted is at or
+[−0.200, +0.057]); every clean-arm interval is disjoint from nano's interval
+(nano's upper bound, −0.100, sits below every clean arm's lower bound). That is
+not the same claim as "every clean interval excludes zero itself": luna's
+[−0.007, +0.171] touches zero, and opus-5/sonnet-5 are exactly [+0.000, +0.000]
+(saturated at ceiling on both personas, not positive). `cue_read_before_action`
+given acted is at or
 near 1.000 status_irrelevant-wide on six of seven arms; terra is the exception
 at 0.500 (n_acted=32).

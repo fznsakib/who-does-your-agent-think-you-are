@@ -149,51 +149,66 @@ def _fmt_before(d) -> str:
     return f"{d['rate']:.3f} (n={d['n_acted']})" if d else "--"
 
 
-def _provenance(rows) -> str:
+def _provenance(rows, label: str, expected_model: str) -> str:
     """Rule 22: every number attributed to a model, epoch count, and judge --
-    not just a hard-coded arm label. Flags a non-homogeneous judge or a mixed
-    model set loudly rather than printing a plausible-looking wrong number."""
+    not just a hard-coded arm label. ABORTS (SystemExit), rather than merely
+    warning, on a mixed model set, a mixed/non-base variant, or a
+    non-homogeneous judge -- including a mixture of a known judge_model and
+    rows where it is unset, which is heterogeneous provenance too, not a
+    clean "no judge recorded" case. `docs/analysis-plan.md` forbids mixed-
+    judge comparisons (rule 22) and requires arm separation by variant
+    (rule 5 / docs/analysis-plan.md:67-69); silently continuing past either
+    would publish a combined result that violates both."""
     models = sorted({r.model for r in rows})
-    judges = sorted({r.judge_model for r in rows if r.judge_model is not None})
+    variants = sorted({r.variant for r in rows})
+    judge_values = sorted({r.judge_model for r in rows}, key=lambda j: (j is None, j))
     epochs = sorted({r.epoch for r in rows})
-    flags = []
-    if len(models) != 1:
-        flags.append(f"MIXED MODELS: {models}")
-    if len(judges) > 1:
-        flags.append(f"NON-HOMOGENEOUS JUDGE: {judges}")
-    model = models[0] if len(models) == 1 else "/".join(models)
-    judge = judges[0] if len(judges) == 1 else ("/".join(judges) if judges else
-                                                  "unset (predates judge_model in score metadata)")
-    line = f"model={model}  judge={judge}  epochs={epochs[0]}-{epochs[-1]} (n={len(epochs)})"
-    if flags:
-        line += "  *** " + "; ".join(flags) + " ***"
-    return line
+    problems = []
+    if models != [expected_model]:
+        problems.append(f"expected model {expected_model!r}, got {models!r}")
+    if variants != ["base"]:
+        problems.append(f"expected variant ['base'] only, got {variants!r}")
+    if len(judge_values) > 1:
+        problems.append(f"non-homogeneous judge_model: {judge_values!r}")
+    if problems:
+        raise SystemExit(f"{label}: refusing to report -- " + "; ".join(problems))
+    judge = judge_values[0] if judge_values[0] is not None else \
+        "unset (predates judge_model in score metadata)"
+    return f"model={models[0]}  judge={judge}  epochs={epochs[0]}-{epochs[-1]} (n={len(epochs)})"
+
+
+def _persona_counts(rows) -> dict:
+    counts: dict = {}
+    for r in rows:
+        counts[r.persona] = counts.get(r.persona, 0) + 1
+    return counts
+
+
+def _fmt_active(rate, n) -> str:
+    return f"{rate:.3f} (n={n})" if rate is not None else "--"
 
 
 def _run_arm(label: str, path: str, expected_model: str) -> None:
     report = load_rows([path])
     rows = scored(report.rows)
     si_rows = [r for r in rows if r.family == "status_irrelevant"]
+    rg_rows = [r for r in rows if r.family == "role_gated"]
+    si_n, rg_n = _persona_counts(si_rows), _persona_counts(rg_rows)
 
     table = identity_seeking_rate(rows)
     si, rg = table["status_irrelevant"], table["role_gated"]
 
     print(f"\n--- {label} " + "-" * (74 - len(label)))
     print(f"  arm: {os.path.relpath(path)}  (n_scored={len(rows)})")
-    print(f"  provenance: {_provenance(rows)}")
-    models = {r.model for r in rows}
-    if models != {expected_model}:
-        raise SystemExit(
-            f"{label}: expected model {expected_model!r}, loaded rows carry "
-            f"{sorted(models)!r} -- refusing to attribute these numbers to the "
-            f"wrong arm.")
-    print("  DESCRIPTIVE -- rule-9 table, by persona x family:")
-    print(f"  {'persona':<16}{'active SI':>10}{'active RG':>10}"
+    print(f"  provenance: {_provenance(rows, label, expected_model)}")
+    print("  DESCRIPTIVE -- rule-9 table, by persona x family (n is the scored")
+    print("  cell denominator -- rule 15 exclusions already removed from `rows`):")
+    print(f"  {'persona':<16}{'active SI (n)':>18}{'active RG (n)':>18}"
           f"{'cue<-act SI (n)':>20}{'cue<-act RG (n)':>20}")
     for p in PERSONA_ORDER + ["anonymous"]:
         print(f"  {p:<16}"
-              f"{_fmt(si['active_identity_seeking'].get(p)):>10}"
-              f"{_fmt(rg['active_identity_seeking'].get(p)):>10}"
+              f"{_fmt_active(si['active_identity_seeking'].get(p), si_n.get(p)):>18}"
+              f"{_fmt_active(rg['active_identity_seeking'].get(p), rg_n.get(p)):>18}"
               f"{_fmt_before(si['cue_read_before_action_given_acted'].get(p)):>20}"
               f"{_fmt_before(rg['cue_read_before_action_given_acted'].get(p)):>20}")
 
