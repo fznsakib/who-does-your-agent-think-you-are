@@ -3,13 +3,18 @@
 Answers the first of the three research questions (discovery / deference /
 calibration). One row per model, two marks per row: the CEO and analyst rates
 of active identity lookup on the status-irrelevant scenarios, i.e. any cue
-read beyond the forced initial identity read. A small pooled-overall tick
-sits beside the two persona marks.
+read beyond the forced initial identity read. The two markers carry a small
+fixed vertical offset (applied to every row, whether or not the two values
+coincide) so a row where CEO and analyst land on the same rate -- sonnet-5
+and opus-5 both sit at 1.000 -- still shows two visible markers.
 
 Six rows, grouped by provider and ordered by tier, matching every other
 figure in this set: claude-haiku-4-5, claude-sonnet-5, claude-opus-5,
-gpt-5.6-luna, gpt-5.6-terra, gpt-5.6-sol. gpt-5-nano is excluded -- it is a
-cheap development subject, not a tier-ladder endpoint (see CLAUDE.md).
+gpt-5.6-luna, gpt-5.6-terra, gpt-5.6-sol, with the same thin provider rule as
+`fig_deference.py` (between claude-opus-5 and gpt-5.6-luna -- haiku is an
+earlier-harness Anthropic row, not a separated reference row here). gpt-5-nano
+is excluded -- it is a cheap development subject, not a tier-ladder endpoint
+(see CLAUDE.md).
 
 Reuses `principal_eval.analysis.load_rows` / `scored` / `identity_seeking_rate`
 -- the exact functions behind Table 6 of docs/verification.md
@@ -116,26 +121,27 @@ def main() -> None:
         for key in ("ceo", "analyst", "overall"):
             all_ok &= check(label, key, r[key][0])
 
-    fig, ax = plt.subplots(figsize=(9, 5))
+    fig, ax = plt.subplots(figsize=(9, 5.5))
     n_rows = len(results)
     ys = list(range(n_rows - 1, -1, -1))
+    ceo_off, ana_off = 0.12, -0.12
 
     for y, (label, clean, r) in zip(ys, results):
         ceo_v, ceo_n = r["ceo"]
         ana_v, ana_n = r["analyst"]
-        overall_v, overall_n = r["overall"]
-        ax.scatter([overall_v], [y], marker="|", s=260, color="#888888",
-                   linewidth=1.4, zorder=2)
-        ax.scatter([ceo_v], [y], marker="o", s=70, facecolor=CEO_COLOR,
+        ax.scatter([ceo_v], [y + ceo_off], marker="o", s=70, facecolor=CEO_COLOR,
                    edgecolor=CEO_COLOR, zorder=3)
-        ax.scatter([ana_v], [y], marker="s", s=60, facecolor=ANALYST_COLOR,
+        ax.scatter([ana_v], [y + ana_off], marker="s", s=60, facecolor=ANALYST_COLOR,
                    edgecolor=ANALYST_COLOR, zorder=3)
 
     labels = [label for label, _, _ in results]
     ax.set_yticks(ys)
     ax.set_yticklabels(labels, fontsize=9)
 
-    sep_y = (ys[0] + ys[1]) / 2
+    # Same provider rule as fig_deference.py: between claude-opus-5 (index 2)
+    # and gpt-5.6-luna (index 3) in ROWS order -- haiku sits in the Anthropic
+    # block, not set apart as a separate reference row.
+    sep_y = (ys[2] + ys[3]) / 2
     ax.axhline(sep_y, color="#cccccc", linewidth=0.8)
 
     ax.set_xlim(0, 1)
@@ -150,9 +156,13 @@ def main() -> None:
         plt.Line2D([0], [0], marker="s", color=ANALYST_COLOR, linestyle="none",
                    markersize=7, label="analyst"),
     ]
-    ax.legend(handles=handles, loc="lower right", fontsize=9, framealpha=0.9)
+    # Outside the axes (below the x-axis label) so the legend can never sit
+    # on top of a data marker -- sol's CEO rate (0.907) previously fell
+    # directly under an in-axes legend box.
+    ax.legend(handles=handles, loc="upper center", bbox_to_anchor=(0.5, -0.14),
+              ncol=2, fontsize=9, frameon=False)
 
-    fig.tight_layout()
+    fig.tight_layout(rect=(0, 0.06, 1, 1))
 
     if not all_ok:
         print("\n*** FAIL: at least one plotted value does not match "

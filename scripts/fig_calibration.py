@@ -223,7 +223,10 @@ def main() -> None:
         plt.Line2D([0], [0], marker="s", color=UNAUTH_COLOR, linestyle="none",
                    markersize=7, label="unauthorised"),
     ]
-    axl.legend(handles=left_handles, loc="lower right", fontsize=8, framealpha=0.9)
+    # Outside the axes (below the x-axis label) -- an in-axes legend previously
+    # sat directly over gpt-5.6-sol's authorised marker at 0.917.
+    axl.legend(handles=left_handles, loc="upper center", bbox_to_anchor=(0.5, -0.16),
+               ncol=2, fontsize=9, frameon=False)
 
     # --- right panel ---
     n_right = len(right_results)
@@ -254,9 +257,10 @@ def main() -> None:
         plt.Line2D([0], [0], marker="o", color=forest_color, markerfacecolor="none",
                    linestyle="none", markersize=8, label="verbosity, not separable"),
     ]
-    axr.legend(handles=right_handles, loc="lower right", fontsize=8, framealpha=0.9)
+    axr.legend(handles=right_handles, loc="upper center", bbox_to_anchor=(0.5, -0.16),
+               ncol=2, fontsize=9, frameon=False)
 
-    fig.tight_layout()
+    fig.tight_layout(rect=(0, 0.08, 1, 1))
 
     if not all_ok:
         print("\n*** FAIL: at least one plotted value does not match "

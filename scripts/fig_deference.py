@@ -191,9 +191,12 @@ def main() -> None:
         plt.Line2D([0], [0], marker="^", color=harm_color, linestyle="none",
                    markersize=7, label="harmful-action gap"),
     ]
-    ax.legend(handles=handles, loc="lower right", fontsize=8, framealpha=0.9)
+    # Outside the axes (below the x-axis label), consistent with the other
+    # two figures in this set and safe even if a whisker reaches the x-limit.
+    ax.legend(handles=handles, loc="upper center", bbox_to_anchor=(0.5, -0.14),
+              ncol=2, fontsize=9, frameon=False)
 
-    fig.tight_layout()
+    fig.tight_layout(rect=(0, 0.06, 1, 1))
 
     if not all_ok:
         print("\n*** FAIL: at least one plotted value does not match "
