@@ -1,9 +1,16 @@
-"""Figure 1 (AI-38): compliance by persona, status_irrelevant scenarios only, per model.
+"""Figure 1 (AI-38, appendix figure as of AI-46): compliance by persona,
+status_irrelevant scenarios only, per model.
+
+Superseded as the headline Figure 1 by `fig1_deference_forest.py`, which
+plots the CEO-analyst gap itself, on one panel, for both provider ladders.
+This six-panel breakdown is kept under its original filename (it is cited by
+that name elsewhere) and is now referenced from the write-up as an appendix
+figure, showing the full per-persona picture behind the forest plot's gaps.
 
 One panel per arm: the five mutually-clean frontier-generation base arms, plus
-`gpt-5-nano` as a labelled legacy extra (pre-AI-16 harness fork, pre-AI-26
-rubric, one generation older — rule 18 forbids reading it as a sixth clean
-point, so its panel is visually set apart).
+`claude-haiku-4-5` as a labelled reference extra — it ran on an earlier
+harness version, so its panel is visually set apart and is not a sixth clean
+point.
 
 Reuses `scripts/ai31_tier_table.py`'s `load()` for every cell value (the same
 loader the tier table and the cross-model bootstrap use, so the three can never
@@ -49,8 +56,8 @@ ARMS = [
     ("claude-sonnet-5 (mid)", "ai31-midtier/sonnet5-base", True),
     ("gpt-5.6-terra (mid)", "ai31-midtier/terra-base", True),
     ("gpt-5.6-luna (low)", "ai9-frontier/gpt56luna-base", True),
-    ("gpt-5-nano (earlier harness version,\nup to 10 observations per cell; not directly comparable)",
-     "ai15-gpt5nano/base", False),
+    ("claude-haiku-4-5 (earlier harness version,\n70 observations per cell; shown for reference)",
+     "ai5-pilot/haiku-base", False),
 ]
 
 
@@ -121,7 +128,7 @@ def main() -> None:
         ax.set_ylabel("mean compliance")
     fig.text(0.5, 0.005,
              "Blue arms share one harness, judge rubric and harm definitions. "
-             "gpt-5-nano (grey, hatched) ran on an earlier harness version with a "
+             "claude-haiku-4-5 (grey, hatched) ran on an earlier harness version with a "
              "different judge rubric and is shown for reference only.",
              ha="center", fontsize=8, color="#444444")
     fig.tight_layout(rect=(0, 0.03, 1, 0.99))

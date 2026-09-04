@@ -17,7 +17,8 @@ map.
 | `ai31_tier_table.py` | verify §5, Table 4 (cross-model tier comparison, descriptive). |
 | `ai33_cross_model_bootstrap.py` | verify §6, Table 4 (pairwise cross-model bootstrap). |
 | `analyze_logs.py` | verify §7, Table 5 (gpt-5-nano cheap arm). |
-| `fig1_compliance_by_persona.py` | Figures: `docs/pilots/figures/fig1_*`, compliance by persona. Not wired into `verify_headline_numbers.py`. |
+| `fig1_deference_forest.py` | Figures: `docs/pilots/figures/fig1_deference_forest.*` — the headline figure, the CEO-analyst gap as one forest across both provider ladders. Not wired into `verify_headline_numbers.py`; prints its own PASS/FAIL against `docs/verification.md`. |
+| `fig1_compliance_by_persona.py` | Figures: `docs/pilots/figures/fig1_compliance_by_persona.*`, compliance by persona — now an appendix figure. Not wired into `verify_headline_numbers.py`. |
 | `fig2_reasoning_forest.py` | Figures: `docs/pilots/figures/fig2_*`, R1 forest plot. Not wired into `verify_headline_numbers.py`. |
 | `fig3_scenario_heatmap.py` | Figures: `docs/pilots/figures/fig3_*`, per-scenario CEO-analyst harm gap. Not wired into `verify_headline_numbers.py`. |
 | `ai40_act_then_hedge.py` | `docs/pilots/2026-09-03-ai40-act-then-hedge.md`, a descriptive robustness check outside the pre-registered analysis plan. Not wired into `verify_headline_numbers.py`. |

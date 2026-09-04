@@ -13,10 +13,10 @@ uncertainty statement (`scripts/ai9_frontier_readout.py`, Table 1 of
 `docs/verification.md`). This figure exists to answer a different, descriptive
 question: is the pooled effect spread across the scenario set, or carried by
 one scenario? It is ILLUSTRATIVE, exactly as the per-scenario tables in the
-readout docs are. The legacy `gpt-5-nano` column is NOT n=20: its run has 10
-observations per persona per scenario (9 on `killswitch`, where one CEO sample
-is excluded — rules 15/17), so its cells report both persona denominators
-(e.g. "n=9/10" when they differ) rather than a single shared n.
+readout docs are. The reference column, `claude-haiku-4-5`, ran on an earlier
+harness version and is NOT n=20: its run has 10 observations per persona per
+scenario on every cell (no exclusions on this arm), so its cells report
+n=10, half the five main arms' n=20.
 
 Loader reuse. Table 1 is produced by
 `scripts/ai9_frontier_readout.py`'s `load()` — strict (`all_samples_required`
@@ -24,15 +24,16 @@ whenever the log's own header reports `success`), native `harmful_action` only,
 no backfill. This figure reuses THAT loader, not `ai31_tier_table.load()`, for
 the five clean arms, so a per-scenario cell here cannot silently draw on a
 truncated read or a backfilled row Table 1 would have excluded or read
-natively. `ai31_tier_table.load()` is used ONLY for the `gpt-5-nano` legacy
-column, exactly as `scripts/ai33_cross_model_bootstrap.py` and the tier table
-itself use it there: nano predates AI-20, carries no native `harmful_action`
-field at all, and needs that module's backfill through
-`principal_eval.harm.harm_verdict` to have a harm outcome in the first place.
-The two loaders are NOT claimed to agree in general — they differ in
-strictness and in whether they backfill — only that on these five clean,
-complete, `harmful_action`-native logs they read the identical rows, which the
-exactness check below verifies empirically rather than asserts.
+natively. `ai31_tier_table.load()` is used ONLY for the `claude-haiku-4-5`
+reference column, exactly as `scripts/ai33_cross_model_bootstrap.py` and the
+tier table itself use it for legacy arms: that arm ran on an earlier harness
+version, carries no native `harmful_action` field at all, and needs that
+module's backfill through `principal_eval.harm.harm_verdict` to have a harm
+outcome in the first place. The two loaders are NOT claimed to agree in
+general — they differ in strictness and in whether they backfill — only that
+on these five clean, complete, `harmful_action`-native logs they read the
+identical rows, which the exactness check below verifies empirically rather
+than asserts.
 
 Multi-run refusal. Both loaders read the LAST `.eval` file they find under a
 directory (sorted by filename, which sorts by timestamp) — neither itself
@@ -98,7 +99,7 @@ ARMS = [
     ("gpt-5.6-sol\nflagship", "ai9-frontier/gpt56sol-base", True),
     ("gpt-5.6-terra\nmid", "ai31-midtier/terra-base", True),
     ("gpt-5.6-luna\nlow", "ai9-frontier/gpt56luna-base", True),
-    ("gpt-5-nano\n(earlier harness)", "ai15-gpt5nano/base", False),
+    ("claude-haiku-4-5\n(earlier harness)", "ai5-pilot/haiku-base", False),
 ]
 
 # Published Table 1 pooled E1 harm, five clean arms (docs/verification.md).
@@ -180,8 +181,9 @@ def main() -> None:
     ap.add_argument("--out-dir", default=f"{ROOT}/docs/pilots/figures")
     args = ap.parse_args()
     T.set_log_root(args.logs)
-    # Lift the AI-23 harm exclusion for the T.load() (nano-only) path: nano's
-    # two excluded scenarios are re-blanked explicitly below instead.
+    # Lift the AI-23 harm exclusion for the T.load() (legacy-arm-only) path:
+    # the reference arm's two excluded scenarios are re-blanked explicitly below
+    # instead.
     T.HARM_EXCLUDED = set()
 
     cols = []
@@ -283,9 +285,9 @@ def main() -> None:
              "\"no harm\": the arm produced no harmful episode in that scenario, so there "
              "was no opportunity to defer. \"not scored\": the harmful outcome cannot be "
              "decided from the recorded tool arguments for this scenario on the earlier "
-             "harness. gpt-5-nano (grey label) ran on an earlier harness version with "
-             "n = 9-10 per cell, not 20, using a backfilled harm outcome, and is not a "
-             "sixth directly comparable arm.",
+             "harness. claude-haiku-4-5 (grey label) ran on an earlier harness version with "
+             "n = 10 per cell, not 20, using a backfilled harm outcome, and is shown for "
+             "reference only, not as a sixth directly comparable arm.",
              ha="center", fontsize=7.5, color="#444444", wrap=True)
     fig.tight_layout(rect=(0, 0.05, 1, 1))
 
