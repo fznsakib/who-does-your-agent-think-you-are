@@ -19,8 +19,13 @@ than one, and prints the exact file it read — reproduced per arm below.
 Row/LoadReport pipeline `analyze_logs.py` also uses, so `active_identity_seeking`,
 `cue_read_before_action`, and `acted_on_scenario_tool` are populated the same way
 as every other table in `docs/verification.md`. Metric: `identity_seeking_rate`
-(rule 9), unchanged. **Provenance** (rule 22): model and judge-model homogeneity
-are validated per arm and printed by the command; see the per-arm lines below.
+(rule 9), unchanged. **Provenance** (rule 22): model, variant (must be `base`),
+and judge-model homogeneity (including a mixture of known-vs-unset judge) are
+hard-validated per arm — a mismatch aborts the run rather than printing a
+plausible-looking wrong number. **Disposition** (rule 15/17): excluded rows
+(hard error / no score / limit-hit) are counted per arm AND broken down by
+persona × family × reason, since an exclusion concentrated in one cell
+reweights that cell's rate rather than just shrinking a denominator evenly.
 
 ## Correction: the legacy (nano/haiku) rows are recomputed SI-only, not cited pooled figures
 
@@ -39,19 +44,42 @@ consistency (`docs/analysis-plan.md` §J AI-49 amendment).
 | arm | metric | pooled (cited, superseded here) | SI-only (this readout) |
 |---|---|---|---|
 | gpt-5-nano | overall active seeking | 0.532 | **0.496** (n=417) |
-| gpt-5-nano | ceo | 0.320 | **0.333** |
-| gpt-5-nano | analyst | 0.660 | **0.643** |
+| gpt-5-nano | ceo | 0.320 | **0.333** (n=69) |
+| gpt-5-nano | analyst | 0.660 | **0.643** (n=70) |
 | gpt-5-nano | ceo − analyst | −0.340 (no CI) | **−0.310 [−0.538, −0.100]** |
 | claude-haiku-4-5 | overall active seeking | 0.313 | **0.162** (n=420) |
-| claude-haiku-4-5 | ceo | 0.31 | **0.114** |
-| claude-haiku-4-5 | analyst | 0.34 | **0.157** |
+| claude-haiku-4-5 | ceo | 0.31 | **0.114** (n=70) |
+| claude-haiku-4-5 | analyst | 0.34 | **0.157** (n=70) |
 | claude-haiku-4-5 | ceo − analyst | −0.03 (no CI) | **−0.043 [−0.200, +0.057]** |
 
 The nano SI-only figures match `docs/pilots/2026-09-03-ai6-readout.md` T7 exactly
 (ceo 0.333, analyst 0.643, overall SI 0.496, n=417) — that readout already
 reports rule 9 split by family, it was simply not the source cited in the first
 draft of this table. No SI-only haiku figure existed in any prior readout; the
-0.162/0.114/0.157 figures here are newly computed for this readout.
+0.162/0.114/0.157 figures here are newly computed for this readout. Note nano's
+ceo (n=69) and analyst (n=70) cells are NOT equal-sized: 3 of nano's 5 total
+hard-error exclusions land in `status_irrelevant` (ceo=1, chief_of_staff=2 — see
+Disposition below), so the ceo rate is computed on one fewer sample than most
+other cells, not on a uniform 70.
+
+## Disposition (rule 15/17), all seven arms
+
+Excluded rows (hard error, no score, or limit-hit) removed from every rate above,
+counted per arm and broken down by persona/family/reason where non-zero:
+
+| arm | excluded | breakdown |
+|---|---|---|
+| opus-5 | 0 | — |
+| sol | 0 | — |
+| luna | 0 | — |
+| sonnet-5 | 0 | — |
+| terra | 0 | — |
+| gpt-5-nano (legacy) | 5 | ceo/role_gated/error=2, ceo/status_irrelevant/error=1, chief_of_staff/status_irrelevant/error=2 |
+| claude-haiku-4-5 (legacy) | 0 | — |
+
+All five clean arms are complete (0 exclusions) — every SI/RG cell denominator
+below is the full n=140/n=60 design size. nano is the only arm where a cell's
+`active_identity_seeking` rate is computed on fewer samples than its neighbours.
 
 ## Seven-arm table
 
@@ -60,17 +88,19 @@ draft of this table. No SI-only haiku figure existed in any prior readout; the
 analyst` is the EXPLORATORY 95% scenario-clustered bootstrap gap (10,000 draws,
 seed 0, matching the E-series machinery) computed identically for every arm —
 five clean arms plus the two legacy arms recomputed SI-only per the correction
-above.
+above. `n` on the ceo/analyst columns is that persona's own SI cell size (equal
+to the overall SI n / 6 for the five clean arms; unequal for nano — see
+Disposition).
 
 | arm | overall active seeking, SI | ceo | analyst | ceo − analyst, EXPLORATORY | cue-before-action given acted, SI | log file read |
 |---|---|---|---|---|---|---|
-| **claude-opus-5** | 1.000 (n=840) | 1.000 | 1.000 | +0.000 [+0.000, +0.000] | 1.000 (n=9) | `ai9-frontier/opus5-base/2026-09-03T16-58-39-00-00_..._2AfvPf83Gx6wYgPFuF4onY.eval` |
-| **gpt-5.6-sol** | 0.699 (n=840) | 0.907 | 0.650 | +0.257 [+0.057, +0.500] | 0.806 (n=36) | `ai9-frontier/gpt56sol-base/2026-09-03T16-58-41-00-00_..._bsS2a4f9WS2iAw39PQhkh6.eval` |
-| **gpt-5.6-luna** | 0.349 (n=840) | 0.429 | 0.350 | +0.079 [−0.007, +0.171] | 0.909 (n=33) | `ai9-frontier/gpt56luna-base/2026-09-03T18-44-22-00-00_..._ejF2RL2cqTq9sYdA8rMYtS.eval` |
-| **claude-sonnet-5** | 0.969 (n=840) | 1.000 | 1.000 | +0.000 [+0.000, +0.000] | 1.000 (n=15) | `ai31-midtier/sonnet5-base/2026-09-03T18-35-41-00-00_..._2h9oUfo54FMAkKagNgej4i.eval` |
-| **gpt-5.6-terra** | 0.319 (n=840) | 0.457 | 0.371 | +0.086 [+0.007, +0.186] | 0.500 (n=32) | `ai31-midtier/terra-base/2026-09-03T18-35-42-00-00_..._aKhRC5aRhbYZBPmaaqL28V.eval` |
-| gpt-5-nano (legacy, earlier harness) | 0.496 (n=417) | 0.333 | 0.643 | −0.310 [−0.538, −0.100] | 1.000 (n=105) | `ai15-gpt5nano/base/2026-09-03T08-37-22-00-00_..._GKwgCw2DNnZyGKcmY5cagz.eval` |
-| claude-haiku-4-5 (legacy, earlier harness) | 0.162 (n=420) | 0.114 | 0.157 | −0.043 [−0.200, +0.057] | 1.000 (n=20) | `ai5-pilot/haiku-base/2026-09-02T20-35-49-00-00_..._T6UbXCmx2hWiV8UbPrrVey.eval` |
+| **claude-opus-5** | 1.000 (n=840) | 1.000 (n=140) | 1.000 (n=140) | +0.000 [+0.000, +0.000] | 1.000 (n=9) | `ai9-frontier/opus5-base/2026-09-03T16-58-39-00-00_..._2AfvPf83Gx6wYgPFuF4onY.eval` |
+| **gpt-5.6-sol** | 0.699 (n=840) | 0.907 (n=140) | 0.650 (n=140) | +0.257 [+0.057, +0.500] | 0.806 (n=36) | `ai9-frontier/gpt56sol-base/2026-09-03T16-58-41-00-00_..._bsS2a4f9WS2iAw39PQhkh6.eval` |
+| **gpt-5.6-luna** | 0.349 (n=840) | 0.429 (n=140) | 0.350 (n=140) | +0.079 [−0.007, +0.171] | 0.909 (n=33) | `ai9-frontier/gpt56luna-base/2026-09-03T18-44-22-00-00_..._ejF2RL2cqTq9sYdA8rMYtS.eval` |
+| **claude-sonnet-5** | 0.969 (n=840) | 1.000 (n=140) | 1.000 (n=140) | +0.000 [+0.000, +0.000] | 1.000 (n=15) | `ai31-midtier/sonnet5-base/2026-09-03T18-35-41-00-00_..._2h9oUfo54FMAkKagNgej4i.eval` |
+| **gpt-5.6-terra** | 0.319 (n=840) | 0.457 (n=140) | 0.371 (n=140) | +0.086 [+0.007, +0.186] | 0.500 (n=32) | `ai31-midtier/terra-base/2026-09-03T18-35-42-00-00_..._aKhRC5aRhbYZBPmaaqL28V.eval` |
+| gpt-5-nano (legacy, earlier harness) | 0.496 (n=417) | 0.333 (n=69) | 0.643 (n=70) | −0.310 [−0.538, −0.100] | 1.000 (n=105) | `ai15-gpt5nano/base/2026-09-03T08-37-22-00-00_..._GKwgCw2DNnZyGKcmY5cagz.eval` |
+| claude-haiku-4-5 (legacy, earlier harness) | 0.162 (n=420) | 0.114 (n=70) | 0.157 (n=70) | −0.043 [−0.200, +0.057] | 1.000 (n=20) | `ai5-pilot/haiku-base/2026-09-02T20-35-49-00-00_..._T6UbXCmx2hWiV8UbPrrVey.eval` |
 
 The two legacy rows are printed for comparison only and are never counted among
 "the five clean arms" (per `docs/analysis-plan.md` §J AI-49 amendment, item 3).
@@ -78,84 +108,85 @@ The two legacy rows are printed for comparison only and are never counted among
 ## Per-persona × family detail, all seven arms
 
 `SI` = status_irrelevant, `RG` = role_gated. Both signals, both families, all six
-personas (`--` = no cell / no acted samples).
+personas (`--` = no cell / no acted samples). `n` on the active-seeking columns
+is that cell's scored-row count (rule 15 exclusions already removed).
 
 ### opus-5 (`logs/ai9-frontier/opus5-base`)
 
-| persona | active SI | active RG | cue-before-act SI (n) | cue-before-act RG (n) |
+| persona | active SI (n) | active RG (n) | cue-before-act SI (n) | cue-before-act RG (n) |
 |---|---|---|---|---|
-| ceo | 1.000 | 1.000 | 1.000 (n=8) | 1.000 (n=25) |
-| researcher | 1.000 | 1.000 | -- | 1.000 (n=20) |
-| chief_of_staff | 1.000 | 1.000 | -- | -- |
-| analyst | 1.000 | 1.000 | -- | -- |
-| external | 1.000 | 1.000 | 1.000 (n=1) | -- |
-| anonymous | 1.000 | 1.000 | -- | -- |
+| ceo | 1.000 (n=140) | 1.000 (n=60) | 1.000 (n=8) | 1.000 (n=25) |
+| researcher | 1.000 (n=140) | 1.000 (n=60) | -- | 1.000 (n=20) |
+| chief_of_staff | 1.000 (n=140) | 1.000 (n=60) | -- | -- |
+| analyst | 1.000 (n=140) | 1.000 (n=60) | -- | -- |
+| external | 1.000 (n=140) | 1.000 (n=60) | 1.000 (n=1) | -- |
+| anonymous | 1.000 (n=140) | 1.000 (n=60) | -- | -- |
 
 ### sol (`logs/ai9-frontier/gpt56sol-base`)
 
-| persona | active SI | active RG | cue-before-act SI (n) | cue-before-act RG (n) |
+| persona | active SI (n) | active RG (n) | cue-before-act SI (n) | cue-before-act RG (n) |
 |---|---|---|---|---|
-| ceo | 0.907 | 1.000 | 1.000 (n=14) | 1.000 (n=36) |
-| researcher | 0.614 | 1.000 | 1.000 (n=4) | 1.000 (n=20) |
-| chief_of_staff | 0.671 | 1.000 | 1.000 (n=6) | -- |
-| analyst | 0.650 | 1.000 | -- | -- |
-| external | 0.700 | 0.983 | 0.222 (n=9) | -- |
-| anonymous | 0.650 | 1.000 | 1.000 (n=3) | -- |
+| ceo | 0.907 (n=140) | 1.000 (n=60) | 1.000 (n=14) | 1.000 (n=36) |
+| researcher | 0.614 (n=140) | 1.000 (n=60) | 1.000 (n=4) | 1.000 (n=20) |
+| chief_of_staff | 0.671 (n=140) | 1.000 (n=60) | 1.000 (n=6) | -- |
+| analyst | 0.650 (n=140) | 1.000 (n=60) | -- | -- |
+| external | 0.700 (n=140) | 0.983 (n=60) | 0.222 (n=9) | -- |
+| anonymous | 0.650 (n=140) | 1.000 (n=60) | 1.000 (n=3) | -- |
 
 ### luna (`logs/ai9-frontier/gpt56luna-base`)
 
-| persona | active SI | active RG | cue-before-act SI (n) | cue-before-act RG (n) |
+| persona | active SI (n) | active RG (n) | cue-before-act SI (n) | cue-before-act RG (n) |
 |---|---|---|---|---|
-| ceo | 0.429 | 0.733 | 1.000 (n=19) | 0.600 (n=40) |
-| researcher | 0.336 | 0.950 | 1.000 (n=2) | 1.000 (n=20) |
-| chief_of_staff | 0.400 | 0.967 | 0.900 (n=10) | -- |
-| analyst | 0.350 | 0.883 | -- | -- |
-| external | 0.279 | 0.550 | -- | -- |
-| anonymous | 0.300 | 0.833 | 0.000 (n=2) | -- |
+| ceo | 0.429 (n=140) | 0.733 (n=60) | 1.000 (n=19) | 0.600 (n=40) |
+| researcher | 0.336 (n=140) | 0.950 (n=60) | 1.000 (n=2) | 1.000 (n=20) |
+| chief_of_staff | 0.400 (n=140) | 0.967 (n=60) | 0.900 (n=10) | -- |
+| analyst | 0.350 (n=140) | 0.883 (n=60) | -- | -- |
+| external | 0.279 (n=140) | 0.550 (n=60) | -- | -- |
+| anonymous | 0.300 (n=140) | 0.833 (n=60) | 0.000 (n=2) | -- |
 
 ### sonnet-5 (`logs/ai31-midtier/sonnet5-base`)
 
-| persona | active SI | active RG | cue-before-act SI (n) | cue-before-act RG (n) |
+| persona | active SI (n) | active RG (n) | cue-before-act SI (n) | cue-before-act RG (n) |
 |---|---|---|---|---|
-| ceo | 1.000 | 1.000 | 1.000 (n=10) | 1.000 (n=32) |
-| researcher | 1.000 | 1.000 | -- | 1.000 (n=20) |
-| chief_of_staff | 0.964 | 1.000 | 1.000 (n=2) | -- |
-| analyst | 1.000 | 1.000 | -- | -- |
-| external | 0.871 | 1.000 | 1.000 (n=3) | -- |
-| anonymous | 0.979 | 1.000 | -- | -- |
+| ceo | 1.000 (n=140) | 1.000 (n=60) | 1.000 (n=10) | 1.000 (n=32) |
+| researcher | 1.000 (n=140) | 1.000 (n=60) | -- | 1.000 (n=20) |
+| chief_of_staff | 0.964 (n=140) | 1.000 (n=60) | 1.000 (n=2) | -- |
+| analyst | 1.000 (n=140) | 1.000 (n=60) | -- | -- |
+| external | 0.871 (n=140) | 1.000 (n=60) | 1.000 (n=3) | -- |
+| anonymous | 0.979 (n=140) | 1.000 (n=60) | -- | -- |
 
 ### terra (`logs/ai31-midtier/terra-base`)
 
-| persona | active SI | active RG | cue-before-act SI (n) | cue-before-act RG (n) |
+| persona | active SI (n) | active RG (n) | cue-before-act SI (n) | cue-before-act RG (n) |
 |---|---|---|---|---|
-| ceo | 0.457 | 0.933 | 0.769 (n=13) | 0.889 (n=36) |
-| researcher | 0.350 | 0.933 | 0.333 (n=6) | 1.000 (n=20) |
-| chief_of_staff | 0.350 | 1.000 | 0.400 (n=10) | 1.000 (n=3) |
-| analyst | 0.371 | 0.967 | -- | -- |
-| external | 0.171 | 0.183 | -- | -- |
-| anonymous | 0.214 | 0.850 | 0.000 (n=3) | -- |
+| ceo | 0.457 (n=140) | 0.933 (n=60) | 0.769 (n=13) | 0.889 (n=36) |
+| researcher | 0.350 (n=140) | 0.933 (n=60) | 0.333 (n=6) | 1.000 (n=20) |
+| chief_of_staff | 0.350 (n=140) | 1.000 (n=60) | 0.400 (n=10) | 1.000 (n=3) |
+| analyst | 0.371 (n=140) | 0.967 (n=60) | -- | -- |
+| external | 0.171 (n=140) | 0.183 (n=60) | -- | -- |
+| anonymous | 0.214 (n=140) | 0.850 (n=60) | 0.000 (n=3) | -- |
 
 ### gpt-5-nano, legacy (`logs/ai15-gpt5nano/base`)
 
-| persona | active SI | active RG | cue-before-act SI (n) | cue-before-act RG (n) |
+| persona | active SI (n) | active RG (n) | cue-before-act SI (n) | cue-before-act RG (n) |
 |---|---|---|---|---|
-| ceo | 0.333 | 0.286 | 1.000 (n=30) | 1.000 (n=19) |
-| researcher | 0.600 | 0.700 | 1.000 (n=20) | 1.000 (n=9) |
-| chief_of_staff | 0.426 | 0.700 | 1.000 (n=22) | 1.000 (n=2) |
-| analyst | 0.643 | 0.700 | 1.000 (n=15) | 1.000 (n=3) |
-| external | 0.443 | 0.400 | 1.000 (n=10) | -- |
-| anonymous | 0.529 | 0.833 | 1.000 (n=8) | 1.000 (n=5) |
+| ceo | 0.333 (n=69) | 0.286 (n=28) | 1.000 (n=30) | 1.000 (n=19) |
+| researcher | 0.600 (n=70) | 0.700 (n=30) | 1.000 (n=20) | 1.000 (n=9) |
+| chief_of_staff | 0.426 (n=68) | 0.700 (n=30) | 1.000 (n=22) | 1.000 (n=2) |
+| analyst | 0.643 (n=70) | 0.700 (n=30) | 1.000 (n=15) | 1.000 (n=3) |
+| external | 0.443 (n=70) | 0.400 (n=30) | 1.000 (n=10) | -- |
+| anonymous | 0.529 (n=70) | 0.833 (n=30) | 1.000 (n=8) | 1.000 (n=5) |
 
 ### claude-haiku-4-5, legacy (`logs/ai5-pilot/haiku-base`)
 
-| persona | active SI | active RG | cue-before-act SI (n) | cue-before-act RG (n) |
+| persona | active SI (n) | active RG (n) | cue-before-act SI (n) | cue-before-act RG (n) |
 |---|---|---|---|---|
-| ceo | 0.114 | 0.767 | 1.000 (n=7) | 1.000 (n=15) |
-| researcher | 0.200 | 0.767 | 1.000 (n=1) | 1.000 (n=12) |
-| chief_of_staff | 0.171 | 0.700 | 1.000 (n=8) | 1.000 (n=10) |
-| analyst | 0.157 | 0.767 | 1.000 (n=3) | 1.000 (n=4) |
-| external | 0.114 | 0.200 | -- | -- |
-| anonymous | 0.214 | 0.800 | 1.000 (n=1) | 1.000 (n=1) |
+| ceo | 0.114 (n=70) | 0.767 (n=30) | 1.000 (n=7) | 1.000 (n=15) |
+| researcher | 0.200 (n=70) | 0.767 (n=30) | 1.000 (n=1) | 1.000 (n=12) |
+| chief_of_staff | 0.171 (n=70) | 0.700 (n=30) | 1.000 (n=8) | 1.000 (n=10) |
+| analyst | 0.157 (n=70) | 0.767 (n=30) | 1.000 (n=3) | 1.000 (n=4) |
+| external | 0.114 (n=70) | 0.200 (n=30) | -- | -- |
+| anonymous | 0.214 (n=70) | 0.800 (n=30) | 1.000 (n=1) | 1.000 (n=1) |
 
 ## Reading
 
@@ -174,6 +205,5 @@ nano (−0.310 [−0.538, −0.100]) and a CI spanning zero for haiku (−0.043
 not the same claim as "every clean interval excludes zero itself": luna's
 [−0.007, +0.171] touches zero, and opus-5/sonnet-5 are exactly [+0.000, +0.000]
 (saturated at ceiling on both personas, not positive). `cue_read_before_action`
-given acted is at or
-near 1.000 status_irrelevant-wide on six of seven arms; terra is the exception
-at 0.500 (n_acted=32).
+given acted is at or near 1.000 status_irrelevant-wide on six of seven arms;
+terra is the exception at 0.500 (n_acted=32).

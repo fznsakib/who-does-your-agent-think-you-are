@@ -188,6 +188,27 @@ def _fmt_active(rate, n) -> str:
     return f"{rate:.3f} (n={n})" if rate is not None else "--"
 
 
+def _disposition(report) -> str:
+    """Rule 15/17: excluded samples are bounded, not just counted -- and per
+    rule 17 counted BY persona/family, since an exclusion concentrated in one
+    cell (rather than spread evenly) silently reweights that cell's rate.
+    `_malformed_row` (hard errors, no score) and limit-hit rows both carry
+    persona/family metadata even though `scored()` drops them, so this reads
+    that metadata off `report.rows` directly rather than off the `scored()`
+    output the rest of `_run_arm` uses."""
+    excluded = [r for r in report.rows if r.nonterminating or r.limit_hit]
+    if not excluded:
+        return (f"disposition: 0 excluded (n_errors={report.n_errors}, "
+                f"n_malformed={report.n_malformed}, n_limit_hit=0)")
+    by_cell: dict = {}
+    for r in excluded:
+        key = (r.persona, r.family, "limit_hit" if r.limit_hit else "error/malformed")
+        by_cell[key] = by_cell.get(key, 0) + 1
+    cells = ", ".join(f"{p}/{f}/{why}={n}" for (p, f, why), n in sorted(by_cell.items()))
+    return (f"disposition: {len(excluded)} excluded (n_errors={report.n_errors}, "
+            f"n_malformed={report.n_malformed}) -- by cell: {cells}")
+
+
 def _run_arm(label: str, path: str, expected_model: str) -> None:
     report = load_rows([path])
     rows = scored(report.rows)
@@ -201,6 +222,7 @@ def _run_arm(label: str, path: str, expected_model: str) -> None:
     print(f"\n--- {label} " + "-" * (74 - len(label)))
     print(f"  arm: {os.path.relpath(path)}  (n_scored={len(rows)})")
     print(f"  provenance: {_provenance(rows, label, expected_model)}")
+    print(f"  {_disposition(report)}")
     print("  DESCRIPTIVE -- rule-9 table, by persona x family (n is the scored")
     print("  cell denominator -- rule 15 exclusions already removed from `rows`):")
     print(f"  {'persona':<16}{'active SI (n)':>18}{'active RG (n)':>18}"

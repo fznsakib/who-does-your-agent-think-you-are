@@ -219,20 +219,25 @@ pipeline `analyze_logs.py` and Table 5 also use, so `active_identity_seeking`
 / `cue_read_before_action` / `acted_on_scenario_tool` are populated exactly as
 elsewhere in this doc (not the bespoke loader in `ai9_frontier_readout.py`).
 Each arm directory must hold exactly one `.eval` (the script refuses, rather
-than guessing, if it finds more than one) and the loaded rows' model is
-validated against the arm's expected id; the exact file read is printed by the
-command below and reproduced in the readout doc.
+than guessing, if it finds more than one) and the loaded rows' model, variant
+(must be `base`), and judge-model homogeneity are hard-validated (rule 22); the
+exact file read is printed by the command below and reproduced in the readout
+doc. Disposition (rule 15/17): excluded rows are counted per arm AND broken
+down by persona × family × reason — all five clean arms have zero exclusions
+(every SI cell below is the full n=140); nano (legacy) has 5, unevenly
+distributed (ceo n=69, chief_of_staff n=68 vs 70 elsewhere) — see the readout
+doc's Disposition table for the full breakdown.
 
 Command (verify §8):
 `uv run python scripts/ai49_identity_seeking.py --logs logs`
 
-| arm | overall active seeking, SI | ceo | analyst | ceo − analyst, EXPLORATORY (95% CI) | cue-before-action given acted, SI |
+| arm | overall active seeking, SI | ceo (n) | analyst (n) | ceo − analyst, EXPLORATORY (95% CI) | cue-before-action given acted, SI |
 |---|---|---|---|---|---|
-| opus-5 | 1.000 (n=840) | 1.000 | 1.000 | +0.000 [+0.000, +0.000] | 1.000 (n=9) |
-| sol | 0.699 (n=840) | 0.907 | 0.650 | +0.257 [+0.057, +0.500] | 0.806 (n=36) |
-| luna | 0.349 (n=840) | 0.429 | 0.350 | +0.079 [−0.007, +0.171] | 0.909 (n=33) |
-| sonnet-5 | 0.969 (n=840) | 1.000 | 1.000 | +0.000 [+0.000, +0.000] | 1.000 (n=15) |
-| terra | 0.319 (n=840) | 0.457 | 0.371 | +0.086 [+0.007, +0.186] | 0.500 (n=32) |
+| opus-5 | 1.000 (n=840) | 1.000 (n=140) | 1.000 (n=140) | +0.000 [+0.000, +0.000] | 1.000 (n=9) |
+| sol | 0.699 (n=840) | 0.907 (n=140) | 0.650 (n=140) | +0.257 [+0.057, +0.500] | 0.806 (n=36) |
+| luna | 0.349 (n=840) | 0.429 (n=140) | 0.350 (n=140) | +0.079 [−0.007, +0.171] | 0.909 (n=33) |
+| sonnet-5 | 0.969 (n=840) | 1.000 (n=140) | 1.000 (n=140) | +0.000 [+0.000, +0.000] | 1.000 (n=15) |
+| terra | 0.319 (n=840) | 0.457 (n=140) | 0.371 (n=140) | +0.086 [+0.007, +0.186] | 0.500 (n=32) |
 
 **Legacy, pre-AI-16 fork — comparison only, not part of the five clean arms.**
 Computed through the IDENTICAL `status_irrelevant`-only pipeline above (never
@@ -240,10 +245,10 @@ the pooled-all-family numbers each arm's own readout publishes, which are a
 different estimand — see the readout doc for the pooled-vs-SI-only
 reconciliation):
 
-| arm | overall active seeking, SI | ceo | analyst | ceo − analyst, EXPLORATORY (95% CI) | cue-before-action given acted, SI |
+| arm | overall active seeking, SI | ceo (n) | analyst (n) | ceo − analyst, EXPLORATORY (95% CI) | cue-before-action given acted, SI |
 |---|---|---|---|---|---|
-| gpt-5-nano | 0.496 (n=417) | 0.333 | 0.643 | −0.310 [−0.538, −0.100] | 1.000 (n=105) |
-| claude-haiku-4-5 | 0.162 (n=420) | 0.114 | 0.157 | −0.043 [−0.200, +0.057] | 1.000 (n=20) |
+| gpt-5-nano | 0.496 (n=417) | 0.333 (n=69) | 0.643 (n=70) | −0.310 [−0.538, −0.100] | 1.000 (n=105) |
+| claude-haiku-4-5 | 0.162 (n=420) | 0.114 (n=70) | 0.157 (n=70) | −0.043 [−0.200, +0.057] | 1.000 (n=20) |
 
 Per-persona × family detail (all `status_irrelevant` / `role_gated` cells, both
 signals, all seven arms) is printed by the command above and reproduced in
