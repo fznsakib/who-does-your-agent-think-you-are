@@ -537,3 +537,49 @@ substitute this amendment adds.
 4. **Like-for-like or not at all** (AI-31, item 4 — restated for this arm). Tier numbers
    use `status_irrelevant`-only estimates on both co-primary outcomes; the all-family
    figures are never used in a tier comparison.
+
+### 2026-09-04 (AI-49) — ceo-analyst gap in active identity-seeking (EXPLORATORY)
+
+**Why this amendment exists.** Rule 9 registers the identity-seeking rate table (`active_
+identity_seeking`, `cue_read_before_action`, by persona x condition x family) as a
+secondary diagnostic, never a headline — but it registers the RATE table only, not a
+persona-vs-persona contrast on that rate, and not a pooled mean across personas either.
+AI-49 computes three such post-hoc numbers over logs that already existed when they were
+written (the five AI-9/AI-31 frontier-generation base arms, plus the two pre-AI-16
+nano/haiku arms reported alongside for comparison): a ceo-minus-analyst contrast, and two
+pooled means across all six personas. Per rule 14 all three are recorded here rather than
+silently added as if pre-registered.
+
+1. **The estimands.**
+   a. `active_identity_seeking(ceo) - active_identity_seeking(analyst)`, `status_irrelevant`
+      only, both personas restricted to `condition == "identified"` (both are always
+      identified — `anonymous` is not part of this contrast). Bootstrap:
+      `principal_eval.analysis.bootstrap_ci`, seed 0, 10,000 scenario-clustered resamples
+      — the same machinery and seed as the E-series, applied to a different outcome
+      (seeking, not compliance).
+   b. **Overall status-irrelevant active-seeking rate**: the plain mean of
+      `active_identity_seeking` pooled across all six personas, `status_irrelevant` only —
+      no bootstrap (point estimate only).
+   c. **Overall cue-read-before-action given acted**: the plain mean of
+      `cue_read_before_action` pooled across all six personas' acted `status_irrelevant`
+      rows — no bootstrap (point estimate only).
+2. **Status: EXPLORATORY, not confirmatory, and not promoted to confirmatory by this
+   amendment.** None of the three join rule 13's fixed E1/E2/E3/E5 confirmatory set, and
+   none are given the DESCRIPTIVE label the tier table's post-hoc pairwise contrasts carry
+   (§H item 3, §J AI-33 item 3) — those contrasts are demoted-but-reportable numbers over a
+   metric with no directional finding at stake; these three are read for a specific
+   directional pattern (the nano inversion), so they are labelled EXPLORATORY, one step
+   more cautious, everywhere printed or documented (`scripts/ai49_identity_seeking.py`,
+   `docs/verification.md` Table 6, and the AI-49 readout doc). The underlying rule-9 RATE
+   TABLE itself (by persona × condition × family, unpooled, no contrast) stays DESCRIPTIVE
+   — only these three derived, post-hoc numbers are demoted to EXPLORATORY.
+3. **Scope: all seven arms carry EXPLORATORY status on these three numbers, but only five
+   are "the five clean arms".** The five clean frontier-generation base arms (opus-5, sol,
+   luna, sonnet-5, terra) and the two pre-AI-16 legacy arms (nano, haiku, computed through
+   the identical `status_irrelevant`-only pipeline — never their own readouts'
+   pooled-all-family numbers, which are a different estimand) all get estimands 1a/1b/1c
+   computed and labelled EXPLORATORY identically. The distinction that matters is NOT
+   whether a gap/mean gets computed (all seven arms get one) — it is that the legacy arms
+   are never counted among "the five clean arms" for any OTHER purpose (E-series
+   confirmatory claims, tier comparisons, etc.) and carry no confirmatory status of any
+   kind on any estimand, exploratory or otherwise.
