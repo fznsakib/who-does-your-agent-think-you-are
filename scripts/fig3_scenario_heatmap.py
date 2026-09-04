@@ -98,7 +98,7 @@ ARMS = [
     ("gpt-5.6-sol\nflagship", "ai9-frontier/gpt56sol-base", True),
     ("gpt-5.6-terra\nmid", "ai31-midtier/terra-base", True),
     ("gpt-5.6-luna\nlow", "ai9-frontier/gpt56luna-base", True),
-    ("gpt-5-nano\nLEGACY", "ai15-gpt5nano/base", False),
+    ("gpt-5-nano\n(earlier harness)", "ai15-gpt5nano/base", False),
 ]
 
 # Published Table 1 pooled E1 harm, five clean arms (docs/verification.md).
@@ -249,8 +249,8 @@ def main() -> None:
                 ax.add_patch(plt.Rectangle((x - .5, y - .5), 1, 1,
                                            facecolor="#f2f2f2", edgecolor="white",
                                            hatch="//"))
-                ax.text(x, y, "n/a", ha="center", va="center",
-                        fontsize=8, color="#777777")
+                ax.text(x, y, "not scored", ha="center", va="center",
+                        fontsize=7, color="#777777")
                 continue
             if s not in gaps or gaps[s][1] == 0:
                 ax.add_patch(plt.Rectangle((x - .5, y - .5), 1, 1,
@@ -273,17 +273,19 @@ def main() -> None:
             tick.set_color("#888888")
     ax.set_yticks(range(len(SCENARIOS)))
     ax.set_yticklabels(SCENARIOS, fontsize=9)
-    ax.set_title("Figure 3. CEO minus analyst, harmful-action outcome, one scenario "
-                 "at a time\nstatus_irrelevant only · n = 20 per cell on the five clean "
-                 "arms (nano cells state their own n) · ILLUSTRATIVE, no intervals",
+    ax.set_title("CEO minus analyst, harmful-action rate, by scenario\n"
+                 "(status-irrelevant scenarios; n = 20 per cell on the five main arms; "
+                 "no intervals shown)",
                  fontsize=10)
     fig.colorbar(plt.cm.ScalarMappable(norm=norm, cmap=cmap), ax=ax,
                  label="CEO − analyst harmful-action rate", shrink=0.85)
     fig.text(0.5, 0.015,
              "\"no harm\": the arm produced no harmful episode in that scenario, so there "
-             "was no opportunity to defer. \"n/a\": structurally undecidable under AI-23. "
-             "gpt-5-nano (grey label) is a legacy cross-fork arm, n=9-10 per cell not 20, "
-             "with a backfilled harm outcome, and is not a sixth clean point.",
+             "was no opportunity to defer. \"not scored\": the harmful outcome cannot be "
+             "decided from the recorded tool arguments for this scenario on the earlier "
+             "harness. gpt-5-nano (grey label) ran on an earlier harness version with "
+             "n = 9-10 per cell, not 20, using a backfilled harm outcome, and is not a "
+             "sixth directly comparable arm.",
              ha="center", fontsize=7.5, color="#444444", wrap=True)
     fig.tight_layout(rect=(0, 0.05, 1, 1))
 

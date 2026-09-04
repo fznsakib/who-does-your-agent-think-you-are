@@ -47,8 +47,14 @@ ARMS = [
     ("gpt-5.6-luna (low)", "ai9-frontier/gpt56luna-base", "confirmatory"),
 ]
 
-SHORT_VERDICT = {"survivor": "survivor",
-                 "verbosity, not deliberation": "verbosity"}
+SHORT_VERDICT = {
+    "survivor": "more deliberation",
+    "verbosity, not deliberation": "verbosity, not separable",
+    "not established": "no reliable gap",
+    "control unavailable": "gap found, per-turn check unavailable",
+    "per-turn sign reversal — inconclusive": "gap found, per-turn check inconsistent",
+    "artefact of episode length": "gap explained by longer episodes",
+}
 
 
 def r1_block(log_dir: str) -> dict:
@@ -95,7 +101,7 @@ def main() -> None:
                     fmt="o", color=color, ecolor=color, elinewidth=2, capsize=4,
                     markersize=6)
         ax.annotate(f"{ci['point']*100:+.1f}%  [{ci['lo']*100:+.1f}, {ci['hi']*100:+.1f}]"
-                    f"   R6: {verdict}",
+                    f"   {verdict}",
                     (ci["hi"] * 100, y), xytext=(8, -3), textcoords="offset points",
                     fontsize=8, color="#333333")
 
@@ -104,21 +110,29 @@ def main() -> None:
     n_expl = sum(1 for _, s, _, _ in results if s == "exploratory")
     split_y = ys[n_expl - 1] - 0.5
     ax.axhline(split_y, color="#bbbbbb", linewidth=0.8)
-    ax.text(ax.get_xlim()[1] * 0.02 + 145, split_y + 0.15, "EXPLORATORY (motivated the effect — AI-9 arms)",
+    ax.text(ax.get_xlim()[1] * 0.02 + 145, split_y + 0.15, "arms that motivated the test",
             fontsize=8, color="#c46f30", ha="right")
-    ax.text(ax.get_xlim()[1] * 0.02 + 145, split_y - 0.35, "CONFIRMATORY (out-of-sample — AI-31 / AI-33 arms)",
+    ax.text(ax.get_xlim()[1] * 0.02 + 145, split_y - 0.35, "held-out arms",
             fontsize=8, color="#3d7a4f", ha="right")
 
     ax.set_yticks(ys)
     ax.set_yticklabels([r[0] for r in results], fontsize=9)
-    ax.set_xlabel("R1: ceo − analyst reasoning tokens per sample, relative gap (%)\n"
+    ax.set_xlabel("Reasoning-token gap: CEO minus analyst, as % of the analyst's mean "
+                  "(labelled R1 in the underlying analysis)\n"
                   "95% scenario-clustered bootstrap CI (7 clusters, 10,000 draws, seed 6)")
-    ax.set_title("Status-sensitive reasoning expenditure — R1 across five arms\n"
-                 "(positive and clear of zero on all five; the R6 mechanism verdict "
-                 "is the deliberation-vs-verbosity call)", fontsize=10)
+    ax.set_title("Does the model reason more when it believes it is talking to the CEO?\n"
+                 "(gap is positive and clear of zero on all five arms; label at each point "
+                 "is the mechanism verdict — see legend)", fontsize=10)
     ax.set_xlim(-15, 160)
     ax.grid(axis="x", alpha=0.25)
-    fig.tight_layout()
+    fig.text(0.5, 0.03,
+             "R1 = CEO minus analyst reasoning tokens per sample.",
+             ha="center", fontsize=7.5, color="#444444")
+    fig.text(0.5, 0.005,
+             "\"Arms that motivated the test\" first suggested this effect; "
+             "\"held-out arms\" tested it on fresh models afterwards.",
+             ha="center", fontsize=7.5, color="#444444")
+    fig.tight_layout(rect=(0, 0.08, 1, 1))
 
     os.makedirs(args.out_dir, exist_ok=True)
     for ext in ("png", "pdf"):
