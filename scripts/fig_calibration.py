@@ -7,19 +7,23 @@ compliance in the authorised cell and in the unauthorised cell, both
 `role_gated`, `identified` only (the same rows Table 1's E3 estimand
 contrasts). Reuses `ai9_frontier_readout.load()` and `cluster_mean()` --
 Table 1's own loader and estimator -- so a plotted mean cannot silently drift
-from the published E3 gap (authorised minus unauthorised). Five models: the
-five mutually clean frontier-generation arms behind Table 1's E1/E2/E3/E5.
-claude-haiku-4-5 is excluded -- its E3 does not appear in any committed
-readout, and the brief for this figure gates a sixth row on that, not on
-whether the number is computable.
+from the published E3 gap (authorised minus unauthorised). Six models: the
+five mutually clean frontier-generation arms behind Table 1's E1/E2/E3/E5,
+plus claude-haiku-4-5 at the top of the Anthropic block (AI-51), read from
+`logs/ai5-pilot/haiku-base` with the exact same loader and estimand --
+identified personas only, anonymised rows excluded, role_gated + identified
+only, no special-casing. haiku's E3 was previously absent from every
+committed readout; it is recorded here for the first time (docs/verification.md
+Table 2) rather than being computable-but-omitted.
 
 The authorised/unauthorised split is NOT identically (x, 0.000) on every
 model: terra's unauthorised mean is 0.013 (3 of 240 unauthorised-identified
-rows), not 0.000 like the other four. This script computes and plots the
-real per-model values rather than assuming the qualitative "0.000 on every
-model" reading in docs/verification.md's Table 1 headline row, and adds the
-five authorised/unauthorised pairs to that doc's Table 2 (see this script's
-own printed output for the exact command).
+rows), and haiku's is 0.163 (below the other five, which sit at or near
+0.000) -- not the "0.000 on every model" reading some qualitative summaries
+use. This script computes and plots the real per-model values rather than
+assuming that, and adds the authorised/unauthorised pairs to
+docs/verification.md's Table 2 (see this script's own printed output for the
+exact command).
 
 RIGHT: the reasoning-token forest from `fig2_reasoning_forest.py`, stripped
 of all per-point text (no value labels, no interval text, no verdict words,
@@ -39,6 +43,13 @@ haiku first when present) within each evidentiary-status group: the
 exploratory pair is opus-5 then sol, the confirmatory trio is sonnet-5, luna,
 then terra -- so the split stays a single contiguous rule while each half
 keeps the shared provider/tier ordering.
+
+claude-haiku-4-5 is NOT in the right panel (AI-51 checked and did not add
+it): `logs/ai5-pilot/haiku-base` carries zero reasoning tokens on every
+sample (`reasoning_report()` returns no `R1_status_gap` block for it, only
+a "not measurable: this model emitted no reasoning tokens" note) -- this is
+a non-reasoning model on that provider/date, not a missing field, so there
+is no gap to plot. The right panel stays at five rows.
 
 The script prints every plotted value next to the published value from
 docs/verification.md with PASS/FAIL, and exits non-zero on any FAIL.
@@ -71,9 +82,10 @@ from principal_eval.reasoning import load_reasoning_rows, reasoning_report  # no
 
 # ---------------------------------------------------------------- left panel
 
-# (row label, log dir relative to --logs), provider-then-tier order, no haiku
-# (its E3 is not in a committed readout -- see docstring).
+# (row label, log dir relative to --logs), provider-then-tier order, haiku
+# first in the Anthropic block (AI-51 -- see docstring).
 LEFT_ROWS = [
+    ("claude-haiku-4-5", "ai5-pilot/haiku-base"),
     ("claude-sonnet-5", "ai31-midtier/sonnet5-base"),
     ("claude-opus-5", "ai9-frontier/opus5-base"),
     ("gpt-5.6-luna", "ai9-frontier/gpt56luna-base"),
@@ -81,10 +93,13 @@ LEFT_ROWS = [
     ("gpt-5.6-sol", "ai9-frontier/gpt56sol-base"),
 ]
 
-# Published E3 compliance gaps (docs/verification.md Table 1) = authorised
-# mean minus unauthorised mean -- checked against below, since authorised and
-# unauthorised are not individually tabulated there.
+# Published E3 compliance gaps (docs/verification.md Table 1/Table 2) =
+# authorised mean minus unauthorised mean -- checked against below, since
+# authorised and unauthorised are not individually tabulated in Table 1.
+# haiku has no Table 1 row (it is not part of the five clean arms); its gap
+# is recorded fresh in Table 2 alongside the other five (AI-51).
 PUBLISHED_E3_GAP = {
+    "claude-haiku-4-5": 0.4375,
     "claude-sonnet-5": 0.867,
     "claude-opus-5": 0.750,
     "gpt-5.6-luna": 0.942,
@@ -93,10 +108,11 @@ PUBLISHED_E3_GAP = {
 }
 
 # Published authorised/unauthorised means individually (docs/verification.md
-# Table 2, AI-50 row). Checking both components, not just their difference,
-# so a bug that shifts authorised and unauthorised by the same amount (which
-# would leave the gap unchanged) cannot silently pass.
+# Table 2, AI-50/AI-51 rows). Checking both components, not just their
+# difference, so a bug that shifts authorised and unauthorised by the same
+# amount (which would leave the gap unchanged) cannot silently pass.
 PUBLISHED_LEFT = {
+    "claude-haiku-4-5": (0.600, 0.163),
     "claude-sonnet-5": (0.867, 0.000),
     "claude-opus-5": (0.750, 0.000),
     "gpt-5.6-luna": (0.942, 0.000),
