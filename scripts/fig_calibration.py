@@ -264,14 +264,24 @@ def check_haiku_no_reasoning_gap(log_dir: str) -> bool:
     under it: `reasoning_report()` raises on a directory holding more than
     one run, which would otherwise block regeneration on a leftover file
     the plotting path never reads (or hide a stale reasoning-bearing file
-    behind a newer no-reasoning one)."""
+    behind a newer no-reasoning one).
+
+    Requires exactly one `base`-arm block, the same way `right_panel_block()`
+    does: if the selected file turns out to be something other than a base
+    run (e.g. a misplaced pushback eval), `blocks` would be empty and
+    `any(...)` over it silently returns False -- reporting PASS on a log
+    that was never actually checked for a reasoning gap."""
     paths = sorted(glob.glob(f"{log_dir}/**/*.eval", recursive=True))
     if not paths:
         raise SystemExit(f"no .eval under {log_dir}")
     selected = [paths[-1]]
     report = reasoning_report(load_reasoning_rows(selected))
     blocks = [b for b in report["models"].values() if b["arm"] == "base"]
-    has_gap = any("R1_status_gap" in b for b in blocks)
+    if len(blocks) != 1:
+        raise SystemExit(f"{selected[0]}: expected exactly one base-arm model block, "
+                         f"got {[b['model'] for b in blocks]} -- cannot verify the "
+                         f"right panel's five-model claim against this log.")
+    has_gap = "R1_status_gap" in blocks[0]
     tag = "PASS" if not has_gap else "FAIL"
     print(f"  claude-haiku-4-5   R1_status_gap present: {has_gap}  "
           f"(expected False -- right panel stays at five models; if this "
