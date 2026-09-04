@@ -2,8 +2,8 @@
 
 Inspect-based behavioural eval: does a model's *inferred* picture of its user change
 agent behaviour? Design + matrix: [README.md](README.md). Binding design authority:
-[docs/superpowers/specs/2026-09-01-inferred-user-status.md](docs/superpowers/specs/2026-09-01-inferred-user-status.md).
-Working plan + next steps: [PLAN.md](PLAN.md).
+[docs/design-spec.md](docs/design-spec.md).
+Working plan + next steps: PLAN.md (local and untracked).
 
 ## Inspect skills (installed via the `inspect-skills` plugin)
 

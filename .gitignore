@@ -8,7 +8,12 @@ __pycache__/
 .env
 
 # Inspect eval logs
-logs/
+logs/*
+!logs/README.md
+
+# Working plans (kept on disk, not tracked)
+PLAN.md
+docs/superpowers/plans/
 
 # OS / editor
 .DS_Store
