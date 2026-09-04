@@ -23,6 +23,9 @@ scripts — it reimplements no statistic, so it can never disagree with them:
   5. `scripts/analyze_logs.py`           — the gpt-5-nano cheap arm: E1 +0.190,
      and the paired pushback flip (17.1% toward compliance vs the 9.0% null
      floor) from the AI-18 backfill run.
+  6. `scripts/ai49_identity_seeking.py`  — DESCRIPTIVE rule-9 identity-seeking
+     (active identity-seeking; cue-read-before-action given acted) by persona x
+     family, over the same five frontier-generation base arms as step 1.
 
 Determinism: every wrapped script pins its own seed (bootstrap seed 0 for the
 E-series/tier/pairwise scripts, seed 6 for the R-series) and 10,000 resamples,
@@ -103,6 +106,14 @@ def sections(logs: str) -> list[tuple[str, list[str]]]:
             [sys.executable, f"{HERE}/analyze_logs.py",
              f"{logs}/ai15-gpt5nano/base", f"{logs}/ai18-backfill/gpt5nano-pushback"],
         ),
+        (
+            "8. IDENTITY-SEEKING, DESCRIPTIVE — rule-9 table (active identity-\n"
+            "   seeking, cue-read-before-action given acted) by persona x family,\n"
+            "   plus the overall status-irrelevant rate and the ceo-analyst active-\n"
+            "   seeking gap, for the five clean frontier-generation base arms\n"
+            "   (ai49_identity_seeking.py; readout: 2026-09-04-ai49-identity-seeking.md)",
+            [sys.executable, f"{HERE}/ai49_identity_seeking.py", "--logs", logs],
+        ),
     ]
 
 
@@ -113,7 +124,7 @@ def main() -> None:
     ap.add_argument("--logs", default=f"{ROOT}/logs",
                     help="root of the local logs tree (default: <repo>/logs)")
     ap.add_argument("--only", type=int, default=None, metavar="N",
-                    help="run only section N (1-7), for a quick partial check")
+                    help="run only section N (1-8), for a quick partial check")
     args = ap.parse_args()
 
     logs = os.path.abspath(args.logs)
