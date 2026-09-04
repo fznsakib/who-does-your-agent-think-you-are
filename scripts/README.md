@@ -17,10 +17,12 @@ map.
 | `ai31_tier_table.py` | verify §5, Table 4 (cross-model tier comparison, descriptive). |
 | `ai33_cross_model_bootstrap.py` | verify §6, Table 4 (pairwise cross-model bootstrap). |
 | `analyze_logs.py` | verify §7, Table 5 (gpt-5-nano cheap arm). |
-| `fig1_deference_forest.py` | Figures: `docs/pilots/figures/fig1_deference_forest.*` — the headline figure, the CEO-analyst gap as one forest across both provider ladders. Not wired into `verify_headline_numbers.py`; prints its own PASS/FAIL against `docs/verification.md`. |
-| `fig1_compliance_by_persona.py` | Figures: `docs/pilots/figures/fig1_compliance_by_persona.*`, compliance by persona — now an appendix figure. Not wired into `verify_headline_numbers.py`. |
-| `fig2_reasoning_forest.py` | Figures: `docs/pilots/figures/fig2_*`, R1 forest plot. Not wired into `verify_headline_numbers.py`. |
-| `fig3_scenario_heatmap.py` | Figures: `docs/pilots/figures/fig3_*`, per-scenario CEO-analyst harm gap. Not wired into `verify_headline_numbers.py`. |
+| `fig_discovery.py` | Figures: `docs/pilots/figures/fig_discovery.*` — the Discovery figure: identity-lookup rate, CEO vs analyst, one row per model. Not wired into `verify_headline_numbers.py`; prints its own PASS/FAIL against `docs/verification.md` Table 6. |
+| `fig_deference.py` | Figures: `docs/pilots/figures/fig_deference.*` — the Deference figure: the CEO-analyst gap as one forest across both provider ladders. Renamed/adapted from `fig1_deference_forest.py` (AI-50). Not wired into `verify_headline_numbers.py`; prints its own PASS/FAIL against `docs/verification.md` Table 1. |
+| `fig_calibration.py` | Figures: `docs/pilots/figures/fig_calibration.*` — the Calibration figure, two panels: the role-gated positive control (left) and the reasoning forest (right, adapted from `fig2_reasoning_forest.py`). Not wired into `verify_headline_numbers.py`; prints its own PASS/FAIL against `docs/verification.md` Tables 1-3. |
+| `fig1_compliance_by_persona.py` | Figures (appendix): `docs/pilots/figures/fig1_compliance_by_persona.*`, compliance by persona. Not wired into `verify_headline_numbers.py`. |
+| `fig2_reasoning_forest.py` | Superseded as a standalone figure by `fig_calibration.py`'s right panel; kept for its fuller per-point annotations. Not wired into `verify_headline_numbers.py`. |
+| `fig3_scenario_heatmap.py` | Figures (appendix): `docs/pilots/figures/fig3_*`, per-scenario CEO-analyst harm gap. Not wired into `verify_headline_numbers.py`. |
 | `ai40_act_then_hedge.py` | `docs/pilots/2026-09-03-ai40-act-then-hedge.md`, a descriptive robustness check outside the pre-registered analysis plan. Not wired into `verify_headline_numbers.py`. |
 
 ## Pilot readouts

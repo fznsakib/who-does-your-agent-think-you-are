@@ -1,28 +1,29 @@
-"""Figure 1 (AI-46): the CEO-analyst deference gap as one forest, both provider
-ladders, one panel.
+"""Figure: the CEO-analyst deference gap as one forest, both provider ladders,
+one panel. Renamed and adapted from `fig1_deference_forest.py` (AI-46) for the
+one-figure-per-finding set: this is the Deference figure.
 
-The previous Figure 1 (`fig1_compliance_by_persona.py`) showed six small
-panels of per-persona compliance; a reader had to subtract two bars by eye to
-see the number the write-up actually leads with. This script plots that
-number directly -- one row per model, ordered provider then tier, each row
-carrying two markers (compliance gap, harmful-action gap) with a 95%
-scenario-clustered CI whisker, status_irrelevant scenarios only.
+One row per model, ordered provider then tier, each row carrying two markers
+(compliance gap, harmful-action gap) with a 95% scenario-clustered CI
+whisker, status_irrelevant scenarios only.
 
 Six rows: claude-haiku-4-5, claude-sonnet-5, claude-opus-5, gpt-5.6-luna,
 gpt-5.6-terra, gpt-5.6-sol, with a thin rule between the two providers'
-blocks. Five of the six (every row but haiku) are the mutually clean
+blocks, all drawn in the same colours and marker style -- no row is visually
+singled out. Five of the six (every row but haiku) are the mutually clean
 frontier-generation arms and are read with `ai9_frontier_readout.load()` /
 `estimands()` / `bootstrap()` -- the exact functions behind Table 1 in
 docs/verification.md, so this script cannot silently drift from that table.
-haiku is drawn from an earlier version of the harness, before harmful_action
-was added to score metadata; it is read the same way the tier table
+haiku ran on an earlier version of the harness, before harmful_action was
+added to score metadata; it is read the same way the tier table
 (`ai31_tier_table.py`) reads it -- compliance over all 7 status_irrelevant
-scenarios, harmful action backfilled from the recorded tool arguments via
-`principal_eval.harm.harm_verdict` over 5 of those 7 scenarios (two are
-dropped everywhere that arm appears, because its logs predate the structural
-predicates that make those two scenarios' harm outcome decidable). haiku is
-drawn grey with hollow/hatched markers and labelled "earlier harness version;
-shown for reference" -- never treated as a seventh clean ladder point.
+scenarios (n=70 per persona cell), harmful action backfilled from the
+recorded tool arguments via `principal_eval.harm.harm_verdict` over 5 of
+those 7 scenarios (n=50 per persona cell; two scenarios are dropped for this
+arm everywhere it appears, because its logs predate the structural
+predicates that make those two scenarios' harm outcome decidable). This
+narrower harm estimand is not marked on the figure itself -- it belongs in
+the prose caption -- but it is preserved here in the PLOTTED vs PUBLISHED
+check and the script's printed output.
 
 Both loaders use the same bootstrap machinery: 10,000 draws, seed 0,
 scenario-clustered resampling (never sample-level).
@@ -33,16 +34,15 @@ non-zero on any FAIL -- this figure is not allowed to show a number that
 disagrees with the table a reader would cross-check it against.
 
 Usage:
-    uv run python scripts/fig1_deference_forest.py [--logs <root>]
+    uv run python scripts/fig_deference.py [--logs <root>]
 
-Writes docs/pilots/figures/fig1_deference_forest.{png,pdf}.
+Writes docs/pilots/figures/fig_deference.{png,pdf}.
 """
 from __future__ import annotations
 
 import argparse
 import os
 import sys
-import textwrap
 
 import matplotlib
 matplotlib.use("Agg")
@@ -56,14 +56,14 @@ sys.path.insert(0, HERE)
 import ai9_frontier_readout as F  # noqa: E402
 import ai31_tier_table as T  # noqa: E402
 
-# (row label, tier word, log dir relative to --logs, clean?)
+# (row label, log dir relative to --logs, clean?)
 ROWS = [
-    ("claude-haiku-4-5", "low", "ai5-pilot/haiku-base", False),
-    ("claude-sonnet-5", "mid", "ai31-midtier/sonnet5-base", True),
-    ("claude-opus-5", "flagship", "ai9-frontier/opus5-base", True),
-    ("gpt-5.6-luna", "low", "ai9-frontier/gpt56luna-base", True),
-    ("gpt-5.6-terra", "mid", "ai31-midtier/terra-base", True),
-    ("gpt-5.6-sol", "flagship", "ai9-frontier/gpt56sol-base", True),
+    ("claude-haiku-4-5", "ai5-pilot/haiku-base", False),
+    ("claude-sonnet-5", "ai31-midtier/sonnet5-base", True),
+    ("claude-opus-5", "ai9-frontier/opus5-base", True),
+    ("gpt-5.6-luna", "ai9-frontier/gpt56luna-base", True),
+    ("gpt-5.6-terra", "ai31-midtier/terra-base", True),
+    ("gpt-5.6-sol", "ai9-frontier/gpt56sol-base", True),
 ]
 
 # Published values from docs/verification.md, checked against below.
@@ -126,15 +126,18 @@ def main() -> None:
     T.set_log_root(args.logs)
 
     results = []
-    for label, tier, rel_dir, clean in ROWS:
+    for label, rel_dir, clean in ROWS:
         log_dir = f"{args.logs}/{rel_dir}"
         r = haiku_row(log_dir) if not clean else clean_row(log_dir)
-        results.append((label, tier, clean, r))
+        results.append((label, clean, r))
 
     print("PLOTTED vs PUBLISHED (docs/verification.md) — CEO-analyst gap, "
           "status_irrelevant only")
+    print(f"  note: {results[0][0]} harm covers 5 of 7 scenarios (n=50 per "
+          f"persona cell); its compliance covers all 7 (n=70) -- narrower "
+          f"harm estimand only, not shown on the figure (see docstring)")
     all_ok = True
-    for label, tier, clean, r in results:
+    for label, clean, r in results:
         for outcome in ("comp", "harm"):
             all_ok &= check(label, outcome, r[outcome])
 
@@ -143,41 +146,26 @@ def main() -> None:
     n_rows = len(results)
     ys = list(range(n_rows - 1, -1, -1))
     comp_off, harm_off = 0.12, -0.12
-    clean_color = "#3d6da8"
-    harm_color_clean = "#c46f30"
-    grey = "#9a9a9a"
+    comp_color = "#3d6da8"
+    harm_color = "#c46f30"
 
-    # The five clean rows' two markers are the same registered 7-scenario
-    # estimand on both outcomes (docs/verification.md guardrail 1). The
-    # non-clean (haiku) row's harm marker is NOT that estimand -- it is
-    # computed over 5 of the 7 scenarios (see haiku_row()) because that run
-    # predates the structural predicates that make the other two decidable.
-    # It is never rendered as if it were comparable to the clean rows' harm
-    # markers: distinct colour/fill (grey/hollow vs the clean palette) plus an
-    # inline "(5/7 scen.)" tag on the marker itself, on top of the footnote
-    # below, so a reader cannot read the two harm markers as one series.
-    for y, (label, tier, clean, r) in zip(ys, results):
+    # Every row is drawn identically -- same colours, same marker style,
+    # clean or not. The only place the haiku row's narrower harm estimand is
+    # recorded is the PLOTTED vs PUBLISHED check above and this script's
+    # docstring; it does not get a distinct look on the figure itself.
+    for y, (label, clean, r) in zip(ys, results):
         co, cl, ch = r["comp"]
         ho, hl, hh = r["harm"]
-        comp_c = clean_color if clean else grey
-        harm_c = harm_color_clean if clean else grey
-        fc_comp = comp_c if clean else "none"
-        fc_harm = harm_c if clean else "none"
         ax.errorbar([co], [y + comp_off], xerr=[[co - cl], [ch - co]],
-                    fmt="none", ecolor=comp_c, elinewidth=1.6, capsize=3)
+                    fmt="none", ecolor=comp_color, elinewidth=1.6, capsize=3)
         ax.errorbar([ho], [y + harm_off], xerr=[[ho - hl], [hh - ho]],
-                    fmt="none", ecolor=harm_c, elinewidth=1.6, capsize=3)
+                    fmt="none", ecolor=harm_color, elinewidth=1.6, capsize=3)
         ax.scatter([co], [y + comp_off], marker="o", s=55,
-                   facecolor=fc_comp, edgecolor=comp_c, linewidth=1.3,
-                   hatch=None if clean else "///", zorder=3)
+                   facecolor=comp_color, edgecolor=comp_color, linewidth=1.3,
+                   zorder=3)
         ax.scatter([ho], [y + harm_off], marker="^", s=55,
-                   facecolor=fc_harm, edgecolor=harm_c, linewidth=1.3,
-                   hatch=None if clean else "///", zorder=3)
-        if not clean:
-            ax.annotate("(harm: 5 of 7 scenarios)",
-                        (hh, y + harm_off), xytext=(6, 0),
-                        textcoords="offset points", fontsize=6.5,
-                        color=grey, va="center")
+                   facecolor=harm_color, edgecolor=harm_color, linewidth=1.3,
+                   zorder=3)
 
     ax.axvline(0, color="#888888", linewidth=1, linestyle="--")
 
@@ -187,48 +175,25 @@ def main() -> None:
     sep_y = (ys[2] + ys[3]) / 2
     ax.axhline(sep_y, color="#cccccc", linewidth=0.8)
 
-    labels = [f"{label}\n({tier})" for label, tier, _, _ in results]
+    labels = [label for label, _, _ in results]
     ax.set_yticks(ys)
     ax.set_yticklabels(labels, fontsize=9)
-    ax.set_xlabel("CEO minus analyst gap, status-irrelevant scenarios only\n"
-                  "95% scenario-clustered bootstrap CI (10,000 draws, seed 0)")
-    ax.set_title("Does the model treat the CEO more deferentially than the analyst?\n"
-                 "circle = judge compliance gap, triangle = harmful-action gap "
-                 "(both co-primary outcomes)", fontsize=10)
+    ax.set_xlabel("CEO minus analyst gap, status-irrelevant scenarios only "
+                  "(95% CI)", fontsize=9)
+    ax.set_title("Does the model treat the CEO more deferentially than the analyst?",
+                 fontsize=11)
     ax.set_xlim(-0.05, 0.40)
     ax.grid(axis="x", alpha=0.25)
 
     handles = [
-        plt.Line2D([0], [0], marker="o", color=clean_color, linestyle="none",
+        plt.Line2D([0], [0], marker="o", color=comp_color, linestyle="none",
                    markersize=7, label="compliance gap"),
-        plt.Line2D([0], [0], marker="^", color=harm_color_clean, linestyle="none",
+        plt.Line2D([0], [0], marker="^", color=harm_color, linestyle="none",
                    markersize=7, label="harmful-action gap"),
-        plt.Line2D([0], [0], marker="o", color=grey, markerfacecolor="none",
-                   linestyle="none", markersize=7,
-                   label="earlier harness version; shown for reference"),
     ]
     ax.legend(handles=handles, loc="lower right", fontsize=8, framealpha=0.9)
 
-    footnote = (
-        "n = 140 per persona cell on the five main models (7 scenarios x 20 "
-        "epochs). claude-haiku-4-5 ran on an earlier harness version, before "
-        "it recorded harmful-action outcomes directly: compliance is n="
-        f"{results[0][3]['n_comp']} per persona cell (7 scenarios), the "
-        "harmful-action outcome is reconstructed from recorded actions on "
-        f"5 of 7 scenarios (n={results[0][3]['n_harm']} per persona cell) "
-        "because two scenarios cannot be scored for harm from that earlier "
-        "run's records."
-    )
-    # Wrap manually to a fixed character width and anchor left of centre with
-    # a left margin, rather than relying on matplotlib's `wrap=True` (which
-    # measures only the anchor-to-edge distance on one side and, for centred
-    # text, can let a line spill past the opposite edge of the canvas).
-    wrapped = "\n".join(textwrap.wrap(footnote, width=100))
-    # Anchored low, with a wider bottom margin reserved via `rect` below, so
-    # there is clear vertical space between this footnote and the two-line
-    # x-axis subtitle above it -- they must never collide.
-    fig.text(0.06, 0.015, wrapped, ha="left", fontsize=7.5, color="#444444")
-    fig.tight_layout(rect=(0, 0.15, 1, 1))
+    fig.tight_layout()
 
     if not all_ok:
         print("\n*** FAIL: at least one plotted value does not match "
@@ -238,7 +203,7 @@ def main() -> None:
 
     os.makedirs(args.out_dir, exist_ok=True)
     for ext in ("png", "pdf"):
-        out = f"{args.out_dir}/fig1_deference_forest.{ext}"
+        out = f"{args.out_dir}/fig_deference.{ext}"
         fig.savefig(out, dpi=200)
         print(f"wrote {out}")
 
