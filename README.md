@@ -189,9 +189,10 @@ cheap arm), each with its own pinned bootstrap seed, so output is
 deterministic. [docs/verification.md](docs/verification.md) maps every claim →
 number (with CI) → exact command → log path → readout doc section, and states
 the guardrails (the two harm estimands, the 3.20× citation rule, etc.).
-Figures: `scripts/fig1_compliance_by_persona.py`,
-`scripts/fig2_reasoning_forest.py`, and `scripts/fig3_scenario_heatmap.py`
-write to `docs/pilots/figures/`.
+Figures: `scripts/fig1_deference_forest.py` (the headline figure — the
+CEO-analyst gap, one panel, both provider ladders), `scripts/fig1_compliance_by_persona.py`
+(appendix figure — the per-persona breakdown behind it), `scripts/fig2_reasoning_forest.py`,
+and `scripts/fig3_scenario_heatmap.py` write to `docs/pilots/figures/`.
 
 ## Repository structure
 
@@ -228,10 +229,10 @@ logs/                # local Inspect logs; Git excludes this directory
 
 Live entry points: `verify_headline_numbers.py`, `ai9_frontier_readout.py`,
 `ai32_reasoning_readout.py`, `ai33_cross_model_bootstrap.py`,
-`ai31_tier_table.py`, `analyze_logs.py`, `fig1_compliance_by_persona.py`,
-`fig2_reasoning_forest.py`, `fig3_scenario_heatmap.py`, and
-`ai40_act_then_hedge.py`. See [scripts/README.md](scripts/README.md) for the
-full script inventory.
+`ai31_tier_table.py`, `analyze_logs.py`, `fig1_deference_forest.py`,
+`fig1_compliance_by_persona.py`, `fig2_reasoning_forest.py`,
+`fig3_scenario_heatmap.py`, and `ai40_act_then_hedge.py`. See
+[scripts/README.md](scripts/README.md) for the full script inventory.
 
 ## Further detail
 
