@@ -78,13 +78,22 @@ import glob
 import os
 import sys
 
+from inspect_ai.log import read_eval_log, read_eval_log_samples
+
 sys.path.insert(0, "src")
 from principal_eval.analysis import (  # noqa: E402
     bootstrap_ci, identity_seeking_rate, load_rows, mean, scored,
 )
+from principal_eval.judges import resolve_judge_model  # noqa: E402
 from principal_eval.personas import PERSONA_ORDER  # noqa: E402
 
 BOOT, SEED = 10_000, 0  # E-series convention (see docs/verification.md determinism note)
+
+# Score-metadata keys this script's estimands depend on. load_rows() coerces
+# an ABSENT key to False (via bool(meta.get(...))), which is indistinguishable
+# from a real False -- so presence is checked directly against the raw score
+# metadata (never through Row) before any rate is computed from these fields.
+REQUIRED_SCORE_FIELDS = ("acted_on_scenario_tool", "cue_read_before_action")
 
 # (label, log dir relative to --logs, expected model id) -- the five clean
 # frontier-generation base arms, same set and same order as
@@ -98,9 +107,12 @@ ARMS = [
 ]
 
 # Pre-AI-16 fork, printed for comparison only -- never part of "the five clean arms".
+# 4th element: allow_unset_judge. Only the haiku arm predates the judge_model
+# field entirely (documented gap, see _provenance) -- nano already carries an
+# explicit, correct judge_model and must be validated like every clean arm.
 LEGACY_ARMS = [
-    ("gpt-5-nano (earlier harness)",       "ai15-gpt5nano/base",  "openai/gpt-5-nano"),
-    ("claude-haiku-4-5 (earlier harness)", "ai5-pilot/haiku-base", "anthropic/claude-haiku-4-5"),
+    ("gpt-5-nano (earlier harness)",       "ai15-gpt5nano/base",  "openai/gpt-5-nano", False),
+    ("claude-haiku-4-5 (earlier harness)", "ai5-pilot/haiku-base", "anthropic/claude-haiku-4-5", True),
 ]
 
 
@@ -123,6 +135,50 @@ def _single_log(logs_root: str, rel_dir: str) -> str:
             f"so exactly one production .eval remains, matching what section 1 "
             f"(ai9_frontier_readout.load()) would select for this arm.")
     return found[0]
+
+
+def _validate_log(path: str, label: str) -> None:
+    """Two checks that must happen against the RAW log, before `load_rows()`
+    ever runs, because `load_rows()` itself is designed to tolerate both
+    conditions silently (by contract -- see its docstring):
+
+    1. **Completeness.** `load_rows()` reads with `all_samples_required=
+       (header.status == "success")`, i.e. it deliberately accepts a
+       truncated read on a non-`success` log. That is the right behaviour
+       for a general-purpose loader, but this script must not then report
+       "0 excluded" / a complete design as if every planned sample were
+       present -- so a non-`success` status, or a loaded count under the
+       header's own `total_samples`, aborts here.
+    2. **Cue-timing field presence.** `acted_on_scenario_tool` and
+       `cue_read_before_action` are coerced by `load_rows()` via
+       `bool(meta.get(...))`, so an ABSENT key reads identically to a real
+       `False` on the `Row`. This script's entire cue-before-action estimand
+       depends on that distinction, so presence is checked directly against
+       each scored sample's raw score metadata."""
+    header = read_eval_log(path, header_only=True)
+    if header.status != "success":
+        raise SystemExit(
+            f"{label}: log status is {header.status!r}, not 'success' -- "
+            f"refusing to treat a non-terminal log as a complete design.")
+    expected_n = header.results.total_samples if header.results else None
+    seen = 0
+    for s in read_eval_log_samples(path, all_samples_required=True):
+        seen += 1
+        if s.error is not None or s.limit is not None:
+            continue
+        score = next(iter(s.scores.values())) if s.scores else None
+        if score is None:
+            continue
+        missing = [f for f in REQUIRED_SCORE_FIELDS if f not in (score.metadata or {})]
+        if missing:
+            raise SystemExit(
+                f"{label}: sample {s.id!r} score metadata is missing {missing} -- "
+                f"refusing to silently treat an absent field as False.")
+    if expected_n is not None and seen != expected_n:
+        raise SystemExit(
+            f"{label}: loaded {seen} samples but the log header reports "
+            f"total_samples={expected_n} -- refusing to treat this as a "
+            f"complete design.")
 
 
 def _active_mean(rows) -> float:
@@ -162,16 +218,20 @@ def _fmt_before(d) -> str:
     return f"{d['rate']:.3f} (n={d['n_acted']}){flag}"
 
 
-def _provenance(rows, label: str, expected_model: str) -> str:
+def _provenance(rows, label: str, expected_model: str, allow_unset_judge: bool = False) -> str:
     """Rule 22: every number attributed to a model, epoch count, and judge --
     not just a hard-coded arm label. ABORTS (SystemExit), rather than merely
-    warning, on a mixed model set, a mixed/non-base variant, or a
-    non-homogeneous judge -- including a mixture of a known judge_model and
-    rows where it is unset, which is heterogeneous provenance too, not a
-    clean "no judge recorded" case. `docs/analysis-plan.md` forbids mixed-
-    judge comparisons (rule 22) and requires arm separation by variant
-    (rule 5 / docs/analysis-plan.md:67-69); silently continuing past either
-    would publish a combined result that violates both."""
+    warning, on a mixed model set, a mixed/non-base variant, a
+    non-homogeneous judge (including a mixture of a known judge_model and
+    rows where it is unset -- heterogeneous provenance too, not a clean "no
+    judge recorded" case), OR a homogeneous judge that is simply the WRONG
+    one: the repo requires opposite-provider judging
+    (`principal_eval.judges.resolve_judge_model`), so a same-provider or
+    otherwise misconfigured-but-consistent scorer must fail here too, not
+    just an inconsistent one. `allow_unset_judge` is the one documented
+    exception: the haiku legacy arm predates the `judge_model` field
+    entirely, so `None` there is a known gap, not a validation failure --
+    every OTHER arm must carry an explicit, correct judge_model."""
     models = sorted({r.model for r in rows})
     variants = sorted({r.variant for r in rows})
     judge_values = sorted({r.judge_model for r in rows}, key=lambda j: (j is None, j))
@@ -183,6 +243,16 @@ def _provenance(rows, label: str, expected_model: str) -> str:
         problems.append(f"expected variant ['base'] only, got {variants!r}")
     if len(judge_values) > 1:
         problems.append(f"non-homogeneous judge_model: {judge_values!r}")
+    elif judge_values[0] is None:
+        if not allow_unset_judge:
+            problems.append("judge_model is unset on every row (expected an explicit, "
+                             "correct judge -- pass allow_unset_judge=True only for the "
+                             "documented pre-judge_model legacy arm)")
+    else:
+        expected_judge = resolve_judge_model(expected_model)
+        if judge_values[0] != expected_judge:
+            problems.append(f"expected opposite-provider judge {expected_judge!r}, "
+                             f"got {judge_values[0]!r}")
     if problems:
         raise SystemExit(f"{label}: refusing to report -- " + "; ".join(problems))
     judge = judge_values[0] if judge_values[0] is not None else \
@@ -236,7 +306,8 @@ def _disposition(report) -> str:
             f"-- by cell: {cells}")
 
 
-def _run_arm(label: str, path: str, expected_model: str) -> None:
+def _run_arm(label: str, path: str, expected_model: str, allow_unset_judge: bool = False) -> None:
+    _validate_log(path, label)
     report = load_rows([path])
     rows = scored(report.rows)
     si_rows = [r for r in rows if r.family == "status_irrelevant"]
@@ -248,7 +319,7 @@ def _run_arm(label: str, path: str, expected_model: str) -> None:
 
     print(f"\n--- {label} " + "-" * (74 - len(label)))
     print(f"  arm: {os.path.relpath(path)}  (n_scored={len(rows)})")
-    print(f"  provenance: {_provenance(rows, label, expected_model)}")
+    print(f"  provenance: {_provenance(rows, label, expected_model, allow_unset_judge)}")
     print(f"  {_disposition(report)}")
     print("  DESCRIPTIVE -- rule-9 table, by persona x family (n is the scored")
     print("  cell denominator -- rule 15 exclusions already removed from `rows`):")
@@ -318,9 +389,9 @@ def main() -> None:
     print("which are a different estimand (see the readout doc for the nano/")
     print("haiku pooled-vs-SI-only distinction).")
     print("=" * 78)
-    for label, rel_dir, expected_model in LEGACY_ARMS:
+    for label, rel_dir, expected_model, allow_unset_judge in LEGACY_ARMS:
         path = _single_log(logs_root, rel_dir)
-        _run_arm(label, path, expected_model)
+        _run_arm(label, path, expected_model, allow_unset_judge)
 
     print("\n" + "=" * 78)
 
