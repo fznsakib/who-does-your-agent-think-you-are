@@ -49,7 +49,7 @@ ARMS = [
     ("claude-sonnet-5 (mid)", "ai31-midtier/sonnet5-base", True),
     ("gpt-5.6-terra (mid)", "ai31-midtier/terra-base", True),
     ("gpt-5.6-luna (low)", "ai9-frontier/gpt56luna-base", True),
-    ("gpt-5-nano (earlier harness version,\nn = 10 per cell; not directly comparable)",
+    ("gpt-5-nano (earlier harness version,\nup to 10 observations per cell; not directly comparable)",
      "ai15-gpt5nano/base", False),
 ]
 

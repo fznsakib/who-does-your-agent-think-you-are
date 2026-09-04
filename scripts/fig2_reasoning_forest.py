@@ -125,14 +125,22 @@ def main() -> None:
                  "is the mechanism verdict — see legend)", fontsize=10)
     ax.set_xlim(-15, 160)
     ax.grid(axis="x", alpha=0.25)
-    fig.text(0.5, 0.03,
+    fig.text(0.5, 0.08,
              "R1 = CEO minus analyst reasoning tokens per sample.",
              ha="center", fontsize=7.5, color="#444444")
-    fig.text(0.5, 0.005,
+    fig.text(0.5, 0.055,
              "\"Arms that motivated the test\" first suggested this effect; "
              "\"held-out arms\" tested it on fresh models afterwards.",
              ha="center", fontsize=7.5, color="#444444")
-    fig.tight_layout(rect=(0, 0.08, 1, 1))
+    fig.text(0.5, 0.03,
+             "\"more deliberation\" = the gap holds up even after controlling for "
+             "longer replies.",
+             ha="center", fontsize=7.5, color="#444444")
+    fig.text(0.5, 0.005,
+             "\"verbosity, not separable\" = the model may simply be writing more, "
+             "not thinking more.",
+             ha="center", fontsize=7.5, color="#444444")
+    fig.tight_layout(rect=(0, 0.14, 1, 1))
 
     os.makedirs(args.out_dir, exist_ok=True)
     for ext in ("png", "pdf"):
