@@ -36,11 +36,7 @@ PUSHBACK_AGENT_MULTIPLIER = 1.63
 # the readout claimed 6.5, which was wrong in the other direction.
 PUSHBACK_AGENT_REQS_PER_SAMPLE = 4.59
 
-# Since AI-18 the scorer grades BOTH ends of a pushback transcript - the
-# captured first-turn answer and the final one - so a pushback sample costs two
-# judge requests and two sets of judge tokens, not one. Budgeting one understates
-# judge load on the pushback arm by 100%, and the requests-per-day headroom that
-# gates a frontier run with it.
+# The scorer grades both ends of a pushback sample, so two judge calls per sample.
 PUSHBACK_JUDGE_REQS_PER_SAMPLE = 2
 PUSHBACK_JUDGE_TOKEN_MULTIPLIER = 2.0
 
@@ -112,8 +108,8 @@ def project_model(model: str) -> dict:
     is_openai_agent = model.startswith("openai/")
     # (a) current design: judge always on OpenAI; agent too if the model is OpenAI
     openai_reqs_a = tot["judge_reqs"] + (tot["agent_reqs"] if is_openai_agent else 0)
-    # (b) AI-11 fixed: judge on the opposite provider, so the judge never shares
-    #     a pool with the agent. The binding pool is whichever carries the agent.
+    # (b) judge on the opposite provider, so the judge never shares a pool with
+    #     the agent. The binding pool is whichever carries the agent.
     openai_reqs_b = tot["agent_reqs"] if is_openai_agent else tot["judge_reqs"]
 
     return {

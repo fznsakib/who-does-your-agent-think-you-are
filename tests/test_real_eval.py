@@ -61,12 +61,7 @@ def test_both_tasks_bound_runaway_samples_with_message_and_token_limits():
 
 
 def test_both_tasks_pin_reasoning_effort_rather_than_inheriting_it():
-    # AI-9: every run before this one recorded `DEFAULT` reasoning config, and
-    # the provider defaults are not symmetric -- the AI-15 gpt-5-nano arm spent
-    # 4,501 reasoning tokens/sample while the haiku-4.5 arm spent zero, so the
-    # cross-provider comparison confounded provider with reasoning mode. The
-    # setting must be pinned on the task (not left to a CLI flag someone can
-    # forget) so it is recorded in every log and identical across personas.
+    # See REASONING_EFFORT in real_eval.py for the constraint this pins.
     for task in (principal_eval(), principal_eval_pushback()):
         assert task.config.reasoning_effort == REASONING_EFFORT
 
