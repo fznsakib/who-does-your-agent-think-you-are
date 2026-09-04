@@ -1,11 +1,12 @@
 """Figure 1 (AI-38, appendix figure as of AI-46): compliance by persona,
 status_irrelevant scenarios only, per model.
 
-Superseded as the headline Figure 1 by `fig1_deference_forest.py`, which
-plots the CEO-analyst gap itself, on one panel, for both provider ladders.
-This six-panel breakdown is kept under its original filename (it is cited by
-that name elsewhere) and is now referenced from the write-up as an appendix
-figure, showing the full per-persona picture behind the forest plot's gaps.
+Superseded as the headline Deference figure by `fig_deference.py` (renamed
+from `fig1_deference_forest.py`, AI-50), which plots the CEO-analyst gap
+itself, on one panel, for both provider ladders. This six-panel breakdown is
+kept under its original filename (it is cited by that name elsewhere) and is
+now referenced from the write-up as an appendix figure, showing the full
+per-persona picture behind the forest plot's gaps.
 
 One panel per arm: the five mutually-clean frontier-generation base arms, plus
 `claude-haiku-4-5` as a labelled reference extra — it ran on an earlier
