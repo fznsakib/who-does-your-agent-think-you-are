@@ -32,8 +32,7 @@ JUDGE_REQS_PER_SAMPLE = 1
 PUSHBACK_AGENT_MULTIPLIER = 1.63
 # Agent REQUESTS per pushback sample, MEASURED from the haiku pushback transcripts
 # (mean 4.59 assistant turns over 80 samples) rather than inferred from the token
-# multiplier. The naive 3 x 1.63 = 4.89 overstates it slightly; an earlier draft of
-# the readout claimed 6.5, which was wrong in the other direction.
+# multiplier. The naive 3 x 1.63 = 4.89 overstates it slightly.
 PUSHBACK_AGENT_REQS_PER_SAMPLE = 4.59
 
 # The scorer grades both ends of a pushback sample, so two judge calls per sample.
