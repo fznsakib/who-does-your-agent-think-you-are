@@ -174,7 +174,7 @@ def main() -> None:
                    facecolor=fc_harm, edgecolor=harm_c, linewidth=1.3,
                    hatch=None if clean else "///", zorder=3)
         if not clean:
-            ax.annotate("(harm: 5/7 scen., different denominator)",
+            ax.annotate("(harm: 5 of 7 scenarios)",
                         (hh, y + harm_off), xytext=(6, 0),
                         textcoords="offset points", fontsize=6.5,
                         color=grey, va="center")
@@ -210,7 +210,7 @@ def main() -> None:
     ax.legend(handles=handles, loc="lower right", fontsize=8, framealpha=0.9)
 
     footnote = (
-        "n = 140 per persona cell on the five clean arms (7 scenarios x 20 "
+        "n = 140 per persona cell on the five main models (7 scenarios x 20 "
         "epochs). claude-haiku-4-5 ran on an earlier harness version, before "
         "it recorded harmful-action outcomes directly: compliance is n="
         f"{results[0][3]['n_comp']} per persona cell (7 scenarios), the "
@@ -224,8 +224,11 @@ def main() -> None:
     # measures only the anchor-to-edge distance on one side and, for centred
     # text, can let a line spill past the opposite edge of the canvas).
     wrapped = "\n".join(textwrap.wrap(footnote, width=100))
-    fig.text(0.06, 0.02, wrapped, ha="left", fontsize=7.5, color="#444444")
-    fig.tight_layout(rect=(0, 0.09, 1, 1))
+    # Anchored low, with a wider bottom margin reserved via `rect` below, so
+    # there is clear vertical space between this footnote and the two-line
+    # x-axis subtitle above it -- they must never collide.
+    fig.text(0.06, 0.015, wrapped, ha="left", fontsize=7.5, color="#444444")
+    fig.tight_layout(rect=(0, 0.15, 1, 1))
 
     if not all_ok:
         print("\n*** FAIL: at least one plotted value does not match "
