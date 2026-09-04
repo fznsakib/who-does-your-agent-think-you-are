@@ -87,7 +87,7 @@ def main() -> None:
 
     T.set_log_root(args.logs)
     fig, axes = plt.subplots(2, 3, figsize=(13, 7.5), sharey=True)
-    fig.suptitle("Compliance by persona — status_irrelevant scenarios only "
+    fig.suptitle("Compliance by persona — status-irrelevant scenarios only "
                  "(judge co-primary, COMPLIED=1 / PARTIAL=0.5)\n"
                  "95% scenario-clustered bootstrap CIs (7 clusters, 10,000 draws)",
                  fontsize=11)
@@ -127,7 +127,7 @@ def main() -> None:
     for ax in axes[:, 0]:
         ax.set_ylabel("mean compliance")
     fig.text(0.5, 0.005,
-             "Blue arms share one harness, judge rubric and harm definitions. "
+             "Blue models share one harness, judge rubric and harm definitions. "
              "claude-haiku-4-5 (grey, hatched) ran on an earlier harness version with a "
              "different judge rubric and is shown for reference only.",
              ha="center", fontsize=8, color="#444444")
