@@ -51,13 +51,8 @@ MESSAGE_LIMIT = 50
 TOKEN_LIMIT = 150_000
 
 
-# Reasoning depth, pinned rather than inherited (AI-9). Every run before this one
-# recorded `DEFAULT`, and the defaults are NOT symmetric across providers: the
-# AI-15 gpt-5-nano base arm spent 4,501 reasoning tokens per sample (79% of its
-# output) while the haiku-4.5 arm spent zero. That makes the completed
-# cross-provider comparison a deliberating model against a non-deliberating one
-# -- provider confounded with reasoning mode, the same class of error AI-15
-# retired gpt-4o-mini for (provider confounded with generation).
+# Reasoning depth is pinned rather than inherited: provider defaults for
+# reasoning effort are asymmetric, so the run pins `reasoning_effort` explicitly.
 #
 # `reasoning_effort` is the only knob both providers accept, so it is the only
 # setting in which parity is even expressible. "off" is not an option to choose:

@@ -86,7 +86,7 @@ def main() -> None:
                  fontsize=11)
 
     # Load everything first so the shared y-axis can cover the widest interval
-    # instead of clipping it (Codex, PR #30: nano ceo's upper bound is 0.603).
+    # instead of clipping it (nano ceo's upper bound is 0.603).
     panels = []
     for title, rel_dir, clean in ARMS:
         comp, *_ = T.load(f"{args.logs}/{rel_dir}")

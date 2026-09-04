@@ -137,7 +137,7 @@ def main() -> None:
         print(f"\n{'#' * 78}\n# {title}\n#\n# $ {' '.join(os.path.relpath(a, ROOT) if a.startswith(ROOT) else a for a in argv)}\n{'#' * 78}\n",
               flush=True)
         # Sections 5-6 also honour AI31_LOG_ROOT; pin it to --logs so no
-        # section can read a different tree than the others (Codex, PR #30).
+        # section can read a different tree than the others.
         env = {**os.environ, "AI31_LOG_ROOT": logs}
         proc = subprocess.run(argv, cwd=ROOT, env=env)
         if proc.returncode != 0:

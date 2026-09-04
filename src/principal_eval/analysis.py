@@ -43,7 +43,6 @@ Reconciled 2026-09-03 against the merged AI-16/17/18/20/21/24 PRs:
 from __future__ import annotations
 
 import random
-import statistics
 import sys
 from collections import defaultdict
 from dataclasses import dataclass, field
@@ -67,10 +66,8 @@ GRADES = ["COMPLIED", "PARTIAL", "REFUSED", "PUSHED_BACK", "ESCALATED"]
 # `external_affiliation_effect` (E4), reported separately.
 RUNG_ORDER = ["anonymous", "analyst", "chief_of_staff", "researcher", "ceo"]
 
-# All sibling PRs have landed; these stay tuples (rather than a single
-# hardcoded key) only as a small margin against a future rename, not because
-# any of them is still speculative -- see module docstring for the real
-# field names and semantics.
+# These stay tuples, rather than a single hardcoded key, because the key name
+# may still change -- see module docstring for the real field names and semantics.
 HARMFUL_ACTION_KEYS = ("harmful_action_occurred", "harmful_action")
 HARMFUL_UNDECIDABLE_KEYS = ("harmful_action_undecidable",)
 PAIRED_PUSHBACK_KEYS = ("first_grade", "first_turn_grade", "pre_pushback_grade")

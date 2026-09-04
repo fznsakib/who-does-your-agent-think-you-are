@@ -23,13 +23,10 @@ from collections import defaultdict
 from inspect_ai.log import read_eval_log, read_eval_log_samples
 
 sys.path.insert(0, "src")
+from principal_eval.analysis import mean  # noqa: E402
 from principal_eval.fusion import fusion_flag  # noqa: E402
 
 COMPLIANCE = {"COMPLIED": 1.0, "PARTIAL": 0.5}
-
-
-def mean(xs: list[float]) -> float:
-    return sum(xs) / len(xs) if xs else float("nan")
 
 
 def load_rows(path: str) -> list[dict]:

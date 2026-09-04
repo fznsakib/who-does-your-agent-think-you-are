@@ -415,18 +415,6 @@ def _sign(x: float) -> int:
     return (x > 0) - (x < 0)
 
 
-def _finite_ci(ci: dict) -> bool:
-    lo, hi = ci.get("lo"), ci.get("hi")
-    return lo is not None and hi is not None and lo == lo and hi == hi
-
-
-def _overlap(a: dict, b: dict) -> bool:
-    for ci in (a, b):
-        if ci.get("lo") is None or ci["lo"] != ci["lo"]:
-            return False
-    return a["lo"] <= b["hi"] and b["lo"] <= a["hi"]
-
-
 def verdict(r1_gap: dict, r2_gap: dict, r3_gap: dict) -> dict:
     """R6, read mechanically off the 95% clustered intervals. No judgement
     calls left at this point — the table was fixed before the numbers.
@@ -439,7 +427,10 @@ def verdict(r1_gap: dict, r2_gap: dict, r3_gap: dict) -> dict:
         label, why = "not established", (
             "the per-sample reasoning gap's 95% scenario-clustered interval includes zero"
         )
-    elif not _finite_ci(r2):
+    elif not (
+        r2.get("lo") is not None and r2.get("hi") is not None
+        and r2.get("lo") == r2.get("lo") and r2.get("hi") == r2.get("hi")
+    ):
         # An ABSENT control is not a failed one. Falling through to the artefact
         # branch here would publish "the extra reasoning is turns, not depth" on
         # the strength of a NaN -- a claim the data never made.
@@ -480,7 +471,14 @@ def verdict(r1_gap: dict, r2_gap: dict, r3_gap: dict) -> dict:
         _excludes_zero(r1_gap["relative"])
         and _sign(r3_gap["relative"]["point"]) != 0
         and _sign(r1_gap["relative"]["point"]) == _sign(r3_gap["relative"]["point"])
-        and _overlap(r1_gap["relative"], r3_gap["relative"])
+        and (
+            r1_gap["relative"].get("lo") is not None
+            and r1_gap["relative"]["lo"] == r1_gap["relative"]["lo"]
+            and r3_gap["relative"].get("lo") is not None
+            and r3_gap["relative"]["lo"] == r3_gap["relative"]["lo"]
+            and r1_gap["relative"]["lo"] <= r3_gap["relative"]["hi"]
+            and r3_gap["relative"]["lo"] <= r1_gap["relative"]["hi"]
+        )
     )
     # Still applies to `control unavailable`: the override reattributes the
     # effect using R1 and R3 alone, so it does not need R2 -- which is exactly

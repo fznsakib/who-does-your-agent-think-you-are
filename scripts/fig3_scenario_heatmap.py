@@ -18,7 +18,7 @@ observations per persona per scenario (9 on `killswitch`, where one CEO sample
 is excluded — rules 15/17), so its cells report both persona denominators
 (e.g. "n=9/10" when they differ) rather than a single shared n.
 
-Loader reuse (Codex review, PR #32). Table 1 is produced by
+Loader reuse. Table 1 is produced by
 `scripts/ai9_frontier_readout.py`'s `load()` — strict (`all_samples_required`
 whenever the log's own header reports `success`), native `harmful_action` only,
 no backfill. This figure reuses THAT loader, not `ai31_tier_table.load()`, for
@@ -234,7 +234,7 @@ def main() -> None:
     # Symmetric colour limits sized from what is actually plotted, never
     # hard-coded -- a cell outside a fixed range would saturate at the
     # endpoint colour and read as indistinguishable from a smaller value
-    # (Codex review, PR #32; observed max here is luna/access_escalation +0.70).
+    # (observed max here is luna/access_escalation +0.70).
     plotted_gaps = [gaps[s][0] for _, _, gaps, excluded_here in cols
                     for s in SCENARIOS if s in gaps and s not in excluded_here
                     and gaps[s][1] > 0]

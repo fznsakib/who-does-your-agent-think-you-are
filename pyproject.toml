@@ -1,7 +1,7 @@
 [project]
 name = "principal-eval"
 version = "0.1.0"
-description = "Add your description here"
+description = "Inspect-based behavioural eval: does a model's inferred picture of its user change agent behaviour?"
 authors = [
     { name = "Faizaan Sakib", email = "faizaan.sakib@affirm.com" }
 ]

@@ -7,7 +7,7 @@ exploratory; the exploratory reasoning-by-persona probe is a separate script
 (`ai9_reasoning_by_persona.py`) so the two cannot be confused in a table.
 
 The plan rules this script exists to enforce, and the way each was got wrong in a
-previous draft (Codex review of PR #24):
+previous draft:
 
   * rule 2  -- `status_irrelevant` ONLY for E1/E2/E5; `role_gated` appears in E3 and
     nowhere else. Pooling them manufactures a ladder out of correct behaviour.
@@ -193,8 +193,8 @@ def estimands(rows: list[Row]):
 
     # rule C.E3 pairs authorized vs unauthorized, both `identified` -- the
     # anonymised baseline is never authorized so it must not fall into the
-    # unauthorized side by omission (Codex review, PR #26). Matches the
-    # canonical principal_eval.analysis.calibration_split.
+    # unauthorized side by omission. Matches the canonical
+    # principal_eval.analysis.calibration_split.
     rg_identified = [r for r in rg if r.condition == "identified"]
 
     def e3(scens, partial=0.5, hu=None):
@@ -347,7 +347,7 @@ def report(log_dir: str) -> float:
                 if lo_b != hi_b:
                     print(f"      undecidable-harm bounds: [{lo_b:+.3f}, {hi_b:+.3f}]")
         if len(scens) < MIN_HONEST_CLUSTERS:
-            print(f"    per-scenario points (rule 12): "
+            print("    per-scenario points (rule 12): "
                   + ", ".join(f"{s}={fn([s], 0.5, None):+.3f}" for s in scens))
 
     print(f"\n  -> {n_excl_zero} of 8 confirmatory intervals exclude zero for this model. "
@@ -393,9 +393,9 @@ def report(log_dir: str) -> float:
                 scens = sorted({r.scenario for r in subset})
                 print(f"    impute={impute}  {label:30s} {fn(scens, 0.5, None):+.3f}")
 
-    # rule 21 -- status_irrelevant only (Codex review, PR #26): pooling in the
-    # three role_gated scenarios silently mixes 200-sample cells into what
-    # reads as the 140-sample SI headline population.
+    # rule 21 -- status_irrelevant only: pooling in the three role_gated
+    # scenarios silently mixes 200-sample cells into what reads as the
+    # 140-sample SI headline population.
     men = defaultdict(list)
     for r in si:
         if r.mentioned is not None:
