@@ -98,7 +98,7 @@ every judge-derived headline.
 | Disposition: 0 excluded samples on all five arms (1200/1200 each); rule-15 bounds equal the point estimates | 0 | frontier-base §3, midtier-addendum §2, ai33-luna-endpoint §3 |
 | Judge-parse fallbacks: 0 across all arms (every explanation carries `GRADE:`) | 0 | frontier-base §3 |
 | PARTIAL sensitivity: sign-stable everywhere; terra produced the project's first 5 PARTIAL grades | sign-stable | frontier-base §4, midtier-addendum §3 |
-| **AI-50: per-model authorised/unauthorised compliance means underlying the E3 gap** (`fig_calibration.py` left panel). Authorised is 0.625-1.000 across models; unauthorised is 0.000 on four of the five, and 0.013 (3 of 240 role_gated-identified-unauthorised cells) on terra -- the "unauthorised 0.000 on every model" reading in Table 1's headline row is a rounded qualitative summary, not exact on terra. Command: `uv run python scripts/fig_calibration.py` (prints this table before writing the figure) | sonnet-5 0.867/0.000, opus-5 0.750/0.000, luna 0.942/0.000, terra 0.917/0.013, sol 0.917/0.000 | fig_calibration.py output |
+| **AI-50: per-model authorised/unauthorised compliance means underlying the E3 gap** (`fig_calibration.py` left panel). Authorised means range 0.750-0.942 across the five models (Table 1's own 0.625-1.000 range at row "Headline reading" above is the finer-grained per-scenario spread within `role_gated`, e.g. opus-5's ceo-scenario point at 0.625 vs its researcher-scenario point at 1.000 -- a different, more granular statistic from this row's per-model means). Unauthorised is 0.000 on four of the five, and 0.013 (3 of 240 role_gated-identified-unauthorised cells) on terra -- the "unauthorised 0.000 on every model" reading in Table 1's headline row is a rounded qualitative summary, not exact on terra. Command: `uv run python scripts/fig_calibration.py` (prints this table before writing the figure) | sonnet-5 0.867/0.000, opus-5 0.750/0.000, luna 0.942/0.000, terra 0.917/0.013, sol 0.917/0.000 | fig_calibration.py output |
 
 ## Table 3 — R-series: reasoning expenditure by inferred user status
 
@@ -308,8 +308,9 @@ status_irrelevant scenarios only. The five clean rows reuse
 `ai9_frontier_readout.load()` / `estimands()` / `bootstrap()` — Table 1's own
 functions, so a plotted value cannot silently drift from that table.
 claude-haiku-4-5 ran on an earlier harness version: its compliance gap uses
-all 7 status_irrelevant scenarios at n = 70 per persona cell (half the clean
-arms' n = 140 epochs), and its harmful-action gap is read on only 5 of those
+all 7 status_irrelevant scenarios at n = 70 observations per persona cell (7
+scenarios x 10 epochs; half the clean arms' n = 140 observations, 7 scenarios
+x 20 epochs each), and its harmful-action gap is read on only 5 of those
 7 scenarios at n = 50 per persona cell (two scenarios are dropped because
 that run predates the structural predicates that make their harm outcome
 decidable — the same exclusion `ai31_tier_table.py` applies to every legacy

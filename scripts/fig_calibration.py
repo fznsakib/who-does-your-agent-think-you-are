@@ -90,6 +90,18 @@ PUBLISHED_E3_GAP = {
     "gpt-5.6-sol": 0.917,
 }
 
+# Published authorised/unauthorised means individually (docs/verification.md
+# Table 2, AI-50 row). Checking both components, not just their difference,
+# so a bug that shifts authorised and unauthorised by the same amount (which
+# would leave the gap unchanged) cannot silently pass.
+PUBLISHED_LEFT = {
+    "claude-sonnet-5": (0.867, 0.000),
+    "claude-opus-5": (0.750, 0.000),
+    "gpt-5.6-luna": (0.942, 0.000),
+    "gpt-5.6-terra": (0.917, 0.013),
+    "gpt-5.6-sol": (0.917, 0.000),
+}
+
 AUTH_COLOR = "#009E73"     # Okabe-Ito teal, shared with the discovery figure
 UNAUTH_COLOR = "#CC79A7"   # Okabe-Ito reddish-purple
 
@@ -109,11 +121,18 @@ def left_panel_values(log_dir: str) -> dict:
 
 
 def check_left(label: str, got_auth: float, got_unauth: float) -> bool:
+    """Checks the authorised and unauthorised means individually against
+    docs/verification.md Table 2, AND their difference against Table 1's
+    already-published E3 gap -- checking only the difference would let a bug
+    that shifts both components by the same amount pass silently."""
+    pub_auth, pub_unauth = PUBLISHED_LEFT[label]
     pub_gap = PUBLISHED_E3_GAP[label]
     got_gap = got_auth - got_unauth
-    ok = abs(got_gap - pub_gap) < 0.0006
+    ok = (abs(got_auth - pub_auth) < 0.0006 and abs(got_unauth - pub_unauth) < 0.0006
+          and abs(got_gap - pub_gap) < 0.0006)
     tag = "PASS" if ok else "FAIL"
-    print(f"  {label:18s}  authorised {got_auth:.3f}  unauthorised {got_unauth:.3f}  "
+    print(f"  {label:18s}  authorised {got_auth:.3f} (published {pub_auth:.3f})  "
+          f"unauthorised {got_unauth:.3f} (published {pub_unauth:.3f})  "
           f"gap {got_gap:+.3f}  published gap {pub_gap:+.3f}  {tag}")
     return ok
 
@@ -162,14 +181,28 @@ PUBLISHED_R1 = {
     "gpt-5.6-terra": (0.428, 0.221, 0.610),
 }
 
+# Published R6 verdict (docs/verification.md Table 3's "R6 verdict" rows),
+# checked below so the filled/hollow marker encoding cannot silently drift
+# from the table even though the interval it is derived from still passes.
+PUBLISHED_VERDICT = {
+    "claude-opus-5": "survivor",
+    "gpt-5.6-sol": "survivor",
+    "claude-sonnet-5": "verbosity, not deliberation",
+    "gpt-5.6-luna": "verbosity, not deliberation",
+    "gpt-5.6-terra": "survivor",
+}
+
 
 def check_right(label: str, got: dict) -> bool:
     pub = PUBLISHED_R1[label]
     got_t = (got["point"], got["lo"], got["hi"])
-    ok = all(abs(g - p) < 0.0015 for g, p in zip(got_t, pub))
+    pub_verdict = PUBLISHED_VERDICT[label]
+    ok = (all(abs(g - p) < 0.0015 for g, p in zip(got_t, pub))
+          and got["verdict"] == pub_verdict)
     tag = "PASS" if ok else "FAIL"
     print(f"  {label:18s}  plotted {got_t[0]:+.1%} [{got_t[1]:+.1%},{got_t[2]:+.1%}]  "
-          f"published {pub[0]:+.1%} [{pub[1]:+.1%},{pub[2]:+.1%}]  {tag}")
+          f"published {pub[0]:+.1%} [{pub[1]:+.1%},{pub[2]:+.1%}]  "
+          f"verdict {got['verdict']!r} (published {pub_verdict!r})  {tag}")
     return ok
 
 
