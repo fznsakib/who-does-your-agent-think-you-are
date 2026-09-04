@@ -134,7 +134,7 @@ def main() -> None:
              ha="center", fontsize=7.5, color="#444444")
     fig.text(0.5, 0.03,
              "\"more deliberation\" = the gap holds up even after controlling for "
-             "longer replies.",
+             "longer multi-turn episodes.",
              ha="center", fontsize=7.5, color="#444444")
     fig.text(0.5, 0.005,
              "\"verbosity, not separable\" = the model may simply be writing more, "
