@@ -107,10 +107,12 @@ def sections(logs: str) -> list[tuple[str, list[str]]]:
              f"{logs}/ai15-gpt5nano/base", f"{logs}/ai18-backfill/gpt5nano-pushback"],
         ),
         (
-            "8. IDENTITY-SEEKING, DESCRIPTIVE — rule-9 table (active identity-\n"
-            "   seeking, cue-read-before-action given acted) by persona x family,\n"
-            "   plus the overall status-irrelevant rate and the ceo-analyst active-\n"
-            "   seeking gap, for the five clean frontier-generation base arms\n"
+            "8. IDENTITY-SEEKING — rule-9 table (active identity-seeking, cue-read-\n"
+            "   before-action given acted), DESCRIPTIVE, by persona x family, plus\n"
+            "   the overall status-irrelevant rate, for the five clean frontier-\n"
+            "   generation base arms and (comparison only) the two pre-AI-16 legacy\n"
+            "   arms. The ceo-analyst active-seeking gap is EXPLORATORY (registered\n"
+            "   post-hoc in analysis-plan.md §J, 2026-09-04 AI-49 amendment)\n"
             "   (ai49_identity_seeking.py; readout: 2026-09-04-ai49-identity-seeking.md)",
             [sys.executable, f"{HERE}/ai49_identity_seeking.py", "--logs", logs],
         ),

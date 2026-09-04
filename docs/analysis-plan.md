@@ -537,3 +537,32 @@ substitute this amendment adds.
 4. **Like-for-like or not at all** (AI-31, item 4 — restated for this arm). Tier numbers
    use `status_irrelevant`-only estimates on both co-primary outcomes; the all-family
    figures are never used in a tier comparison.
+
+### 2026-09-04 (AI-49) — ceo-analyst gap in active identity-seeking (EXPLORATORY)
+
+**Why this amendment exists.** Rule 9 registers the identity-seeking rate table (`active_
+identity_seeking`, `cue_read_before_action`, by persona x condition x family) as a
+secondary diagnostic, never a headline — but it registers the RATE table only, not a
+persona-vs-persona contrast on that rate. AI-49 computes exactly such a contrast (ceo
+minus analyst active-seeking, `status_irrelevant` only) with a 95% scenario-clustered
+bootstrap interval, over logs that already existed when the contrast was written (the
+five AI-9/AI-31 frontier-generation base arms). Per rule 14 this is recorded here rather
+than silently added as if pre-registered.
+
+1. **The estimand.** `active_identity_seeking(ceo) - active_identity_seeking(analyst)`,
+   `status_irrelevant` only, both personas restricted to `condition == "identified"`
+   (both are always identified — `anonymous` is not part of this contrast). Bootstrap:
+   `principal_eval.analysis.bootstrap_ci`, seed 0, 10,000 scenario-clustered resamples —
+   the same machinery and seed as the E-series, applied to a different outcome (seeking,
+   not compliance).
+2. **Status: EXPLORATORY, not confirmatory, and not promoted to confirmatory by this
+   amendment.** It does not join rule 13's fixed E1/E2/E3/E5 confirmatory set. It is
+   reported with the same DESCRIPTIVE label the tier table's post-hoc pairwise contrasts
+   carry (§H item 3, §J AI-33 item 3) — new contrasts on already-collected data, labelled
+   accordingly rather than treated as pre-registered.
+3. **Scope: five clean frontier-generation base arms only** (opus-5, sol, luna, sonnet-5,
+   terra — `scripts/ai49_identity_seeking.py`). The pre-AI-16 nano/haiku arms are reported
+   alongside for comparison, computed through the identical `status_irrelevant`-only
+   pipeline (never their own readouts' pooled-all-family numbers, which are a different
+   estimand), but are never counted among "the five clean arms" and carry no confirmatory
+   status of any kind, exploratory or otherwise.

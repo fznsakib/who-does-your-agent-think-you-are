@@ -5,10 +5,19 @@ calibration) and, until now, the write-up reported it only for the two cheap
 pre-AI-16 arms (nano, haiku) -- never for the five clean frontier-generation base
 arms that carry every confirmatory E-series claim. This script fills that gap.
 
-Every number here is DESCRIPTIVE. Rule 9 of docs/analysis-plan.md registers
-identity-seeking as a reported diagnostic, not a confirmatory estimand (rule 13's
-confirmatory set is E1/E2/E3/E5 only) -- so nothing below is pre-registered, and
-docs/analysis-plan.md is not touched by this ticket.
+The rule-9 rate table (active_identity_seeking / cue_read_before_action, by persona
+x condition x family) is DESCRIPTIVE: rule 9 of docs/analysis-plan.md registers it
+as a reported diagnostic, never a confirmatory estimand (rule 13's confirmatory set
+is E1/E2/E3/E5 only), and this script prints it unchanged -- nothing here enters
+that set.
+
+The ceo-analyst active-seeking gap this script ALSO computes is a different thing:
+a NEW contrast on the registered rate, invented after the underlying logs already
+existed, and per rule 14 it is recorded in docs/analysis-plan.md Section J's
+2026-09-04 (AI-49) amendment (append-only -- see that entry for the full estimand
+definition). It is labelled EXPLORATORY throughout this script's output, the
+verification doc and the readout -- not DESCRIPTIVE, and not part of any
+confirmatory set.
 
 This script reimplements no statistic. It is a thin driver over three functions
 that already exist and are unchanged:
@@ -24,14 +33,33 @@ that already exist and are unchanged:
     printed unchanged.
   * `principal_eval.analysis.bootstrap_ci` -- the same scenario-clustered
     bootstrap every E-series number uses, with the E-series seed (0) and 10,000
-    draws, applied to a new estimand this ticket adds: the ceo-minus-analyst gap
-    in ACTIVE identity-seeking (status_irrelevant only, mirroring
-    `deference_gap_by_rung`'s ceo/analyst gap machinery but on the seeking
-    outcome instead of compliance).
+    draws, applied to the ceo-minus-analyst gap in ACTIVE identity-seeking
+    (status_irrelevant only, mirroring `deference_gap_by_rung`'s ceo/analyst gap
+    machinery but on the seeking outcome instead of compliance).
 
 The two extra numbers per arm (the overall status-irrelevant active-seeking rate,
 and cue-read-before-action given acted pooled over personas) are plain means over
 `identity_seeking_rate`'s own inputs -- no new statistical machinery.
+
+Each arm dir must hold exactly one `.eval` file; the script REFUSES (SystemExit)
+when it finds more than one, rather than silently picking a "latest" -- a stray
+smoke-test or rerun log alongside the production run must not silently double- or
+wrong-count a denominator, and this way section 8 is guaranteed to read the same
+file section 1's five `docs/verification.md` Table 1 paths do (`ai9-frontier/
+opus5-base`, `ai9-frontier/gpt56sol-base`, `ai9-frontier/gpt56luna-base`,
+`ai31-midtier/sonnet5-base`, `ai31-midtier/terra-base` -- the ARMS table below is
+byte-identical to that list). It also prints the loaded file's path, validates the
+rows' model against the expected id for that arm, and reports epoch count and
+judge-model homogeneity (rule 22) -- a misplaced file under the wrong arm label
+fails loudly rather than printing a plausible-looking wrong number.
+
+LEGACY (earlier-harness) COMPARISON: the pre-AI-16 nano/haiku arms are reported
+alongside the five clean arms for comparison ONLY, computed through this exact
+same status_irrelevant-only pipeline (never the pooled-all-family numbers
+published in their own readouts, which are a DIFFERENT estimand and must not be
+compared point-for-point against an SI-only figure -- see
+docs/pilots/2026-09-04-ai49-identity-seeking.md for the full explanation). They
+are never counted among "the five clean arms".
 
 Usage:
     uv run python scripts/ai49_identity_seeking.py [--logs <root>]
@@ -39,10 +67,9 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import glob
 import os
 import sys
-
-from inspect_ai.log import list_eval_logs
 
 sys.path.insert(0, "src")
 from principal_eval.analysis import (  # noqa: E402
@@ -52,23 +79,43 @@ from principal_eval.personas import PERSONA_ORDER  # noqa: E402
 
 BOOT, SEED = 10_000, 0  # E-series convention (see docs/verification.md determinism note)
 
-# (label, log dir relative to --logs) -- the five clean frontier-generation base
-# arms, same set and same order as verify_headline_numbers.py section 1.
+# (label, log dir relative to --logs, expected model id) -- the five clean
+# frontier-generation base arms, same set and same order as
+# verify_headline_numbers.py section 1 / ai9_frontier_readout.py's PRICE table.
 ARMS = [
-    ("opus-5",   "ai9-frontier/opus5-base"),
-    ("sol",      "ai9-frontier/gpt56sol-base"),
-    ("luna",     "ai9-frontier/gpt56luna-base"),
-    ("sonnet-5", "ai31-midtier/sonnet5-base"),
-    ("terra",    "ai31-midtier/terra-base"),
+    ("opus-5",   "ai9-frontier/opus5-base",     "anthropic/claude-opus-5"),
+    ("sol",      "ai9-frontier/gpt56sol-base",  "openai/gpt-5.6-sol"),
+    ("luna",     "ai9-frontier/gpt56luna-base", "openai/gpt-5.6-luna"),
+    ("sonnet-5", "ai31-midtier/sonnet5-base",   "anthropic/claude-sonnet-5"),
+    ("terra",    "ai31-midtier/terra-base",     "openai/gpt-5.6-terra"),
+]
+
+# Pre-AI-16 fork, printed for comparison only -- never part of "the five clean arms".
+LEGACY_ARMS = [
+    ("gpt-5-nano (earlier harness)",       "ai15-gpt5nano/base",  "openai/gpt-5-nano"),
+    ("claude-haiku-4-5 (earlier harness)", "ai5-pilot/haiku-base", "anthropic/claude-haiku-4-5"),
 ]
 
 
-def _expand(logs_root: str, rel_dir: str) -> list[str]:
+def _single_log(logs_root: str, rel_dir: str) -> str:
+    """The one `.eval` under `rel_dir`. Refuses (rather than silently picking a
+    "latest" file) when a directory holds more than one run -- a stray
+    smoke-test log alongside the production run, or a rerun, would otherwise
+    change or double the denominator without warning, and could make this
+    section read different data than section 1
+    (`ai9_frontier_readout.load()` / `ai31_tier_table.load()`) reads for the
+    same arm."""
     d = os.path.join(logs_root, rel_dir)
-    out = [info.name for info in list_eval_logs(d, recursive=True)]
-    if not out:
-        raise SystemExit(f"no .eval logs under {d}")
-    return out
+    found = sorted(glob.glob(f"{d}/**/*.eval", recursive=True))
+    if not found:
+        raise SystemExit(f"no .eval under {d!r}")
+    if len(found) > 1:
+        raise SystemExit(
+            f"{len(found)} .eval files under {d!r}: {[os.path.basename(p) for p in found]}. "
+            f"Refusing to guess -- move/remove the extra run(s) (e.g. a smoke-test log) "
+            f"so exactly one production .eval remains, matching what section 1 "
+            f"(ai9_frontier_readout.load()) would select for this arm.")
+    return found[0]
 
 
 def _active_mean(rows) -> float:
@@ -76,8 +123,9 @@ def _active_mean(rows) -> float:
 
 
 def ceo_minus_analyst_active_seeking(si_rows) -> dict:
-    """DESCRIPTIVE: ceo - analyst gap in ACTIVE identity-seeking, status_irrelevant
-    only, 95% scenario-clustered bootstrap (E-series seed 0, 10,000 draws). Mirrors
+    """EXPLORATORY (docs/analysis-plan.md Section J, 2026-09-04 AI-49 amendment):
+    ceo - analyst gap in ACTIVE identity-seeking, status_irrelevant only, 95%
+    scenario-clustered bootstrap (E-series seed 0, 10,000 draws). Mirrors
     `deference_gap_by_rung`'s ceo/analyst combined-rows-then-lambda pattern so the
     contrast is computed WITHIN each resampled scenario set, exactly like every
     other gap in this codebase."""
@@ -101,6 +149,71 @@ def _fmt_before(d) -> str:
     return f"{d['rate']:.3f} (n={d['n_acted']})" if d else "--"
 
 
+def _provenance(rows) -> str:
+    """Rule 22: every number attributed to a model, epoch count, and judge --
+    not just a hard-coded arm label. Flags a non-homogeneous judge or a mixed
+    model set loudly rather than printing a plausible-looking wrong number."""
+    models = sorted({r.model for r in rows})
+    judges = sorted({r.judge_model for r in rows if r.judge_model is not None})
+    epochs = sorted({r.epoch for r in rows})
+    flags = []
+    if len(models) != 1:
+        flags.append(f"MIXED MODELS: {models}")
+    if len(judges) > 1:
+        flags.append(f"NON-HOMOGENEOUS JUDGE: {judges}")
+    model = models[0] if len(models) == 1 else "/".join(models)
+    judge = judges[0] if len(judges) == 1 else ("/".join(judges) if judges else
+                                                  "unset (predates judge_model in score metadata)")
+    line = f"model={model}  judge={judge}  epochs={epochs[0]}-{epochs[-1]} (n={len(epochs)})"
+    if flags:
+        line += "  *** " + "; ".join(flags) + " ***"
+    return line
+
+
+def _run_arm(label: str, path: str, expected_model: str) -> None:
+    report = load_rows([path])
+    rows = scored(report.rows)
+    si_rows = [r for r in rows if r.family == "status_irrelevant"]
+
+    table = identity_seeking_rate(rows)
+    si, rg = table["status_irrelevant"], table["role_gated"]
+
+    print(f"\n--- {label} " + "-" * (74 - len(label)))
+    print(f"  arm: {os.path.relpath(path)}  (n_scored={len(rows)})")
+    print(f"  provenance: {_provenance(rows)}")
+    models = {r.model for r in rows}
+    if models != {expected_model}:
+        raise SystemExit(
+            f"{label}: expected model {expected_model!r}, loaded rows carry "
+            f"{sorted(models)!r} -- refusing to attribute these numbers to the "
+            f"wrong arm.")
+    print("  DESCRIPTIVE -- rule-9 table, by persona x family:")
+    print(f"  {'persona':<16}{'active SI':>10}{'active RG':>10}"
+          f"{'cue<-act SI (n)':>20}{'cue<-act RG (n)':>20}")
+    for p in PERSONA_ORDER + ["anonymous"]:
+        print(f"  {p:<16}"
+              f"{_fmt(si['active_identity_seeking'].get(p)):>10}"
+              f"{_fmt(rg['active_identity_seeking'].get(p)):>10}"
+              f"{_fmt_before(si['cue_read_before_action_given_acted'].get(p)):>20}"
+              f"{_fmt_before(rg['cue_read_before_action_given_acted'].get(p)):>20}")
+
+    overall_si = _active_mean(si_rows)
+    print(f"\n  DESCRIPTIVE: overall status-irrelevant active-seeking rate: "
+          f"{overall_si:.3f} (n={len(si_rows)})")
+
+    gap = ceo_minus_analyst_active_seeking(si_rows)
+    print(f"  EXPLORATORY (analysis-plan.md §J AI-49): ceo - analyst active-seeking gap "
+          f"(status_irrelevant, 95% scenario-clustered bootstrap, seed={SEED}, "
+          f"{BOOT} draws): "
+          f"{gap['point']:+.3f} [{gap['lo']:+.3f}, {gap['hi']:+.3f}]")
+
+    acted_si = [r for r in si_rows if r.acted_on_scenario_tool]
+    overall_before = (mean([1.0 if r.cue_read_before_action else 0.0 for r in acted_si])
+                       if acted_si else float("nan"))
+    print(f"  DESCRIPTIVE: overall cue-read-before-action given acted "
+          f"(status_irrelevant): {overall_before:.3f} (n_acted={len(acted_si)})")
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--logs", default=os.path.join(
@@ -111,46 +224,26 @@ def main() -> None:
 
     print("=" * 78)
     print("AI-49 -- RULE-9 IDENTITY-SEEKING, FIVE CLEAN FRONTIER-GENERATION ARMS")
-    print("Every number in this section is DESCRIPTIVE (rule 9 is a reported")
-    print("diagnostic, not in the confirmatory set -- see docs/analysis-plan.md")
-    print("rule 13). docs/analysis-plan.md is not amended by this ticket.")
+    print("The rule-9 rate table is DESCRIPTIVE (a registered secondary diagnostic,")
+    print("never confirmatory -- rule 13's set is E1/E2/E3/E5 only). The ceo-analyst")
+    print("gap is EXPLORATORY, registered post-hoc in docs/analysis-plan.md Section J,")
+    print("2026-09-04 (AI-49) amendment -- not part of any confirmatory set.")
     print("=" * 78)
 
-    for label, rel_dir in ARMS:
-        paths = _expand(logs_root, rel_dir)
-        report = load_rows(paths)
-        rows = scored(report.rows)
-        si_rows = [r for r in rows if r.family == "status_irrelevant"]
+    for label, rel_dir, expected_model in ARMS:
+        path = _single_log(logs_root, rel_dir)
+        _run_arm(label, path, expected_model)
 
-        table = identity_seeking_rate(rows)
-        si, rg = table["status_irrelevant"], table["role_gated"]
-
-        print(f"\n--- {label} " + "-" * (74 - len(label)))
-        print(f"  arm: {rel_dir}  (n_scored={len(rows)})")
-        print("  DESCRIPTIVE -- rule-9 table, by persona x family:")
-        print(f"  {'persona':<16}{'active SI':>10}{'active RG':>10}"
-              f"{'cue<-act SI (n)':>20}{'cue<-act RG (n)':>20}")
-        for p in PERSONA_ORDER + ["anonymous"]:
-            print(f"  {p:<16}"
-                  f"{_fmt(si['active_identity_seeking'].get(p)):>10}"
-                  f"{_fmt(rg['active_identity_seeking'].get(p)):>10}"
-                  f"{_fmt_before(si['cue_read_before_action_given_acted'].get(p)):>20}"
-                  f"{_fmt_before(rg['cue_read_before_action_given_acted'].get(p)):>20}")
-
-        overall_si = _active_mean(si_rows)
-        print(f"\n  DESCRIPTIVE: overall status-irrelevant active-seeking rate: "
-              f"{overall_si:.3f} (n={len(si_rows)})")
-
-        gap = ceo_minus_analyst_active_seeking(si_rows)
-        print(f"  DESCRIPTIVE: ceo - analyst active-seeking gap (status_irrelevant, "
-              f"95% scenario-clustered bootstrap, seed={SEED}, {BOOT} draws): "
-              f"{gap['point']:+.3f} [{gap['lo']:+.3f}, {gap['hi']:+.3f}]")
-
-        acted_si = [r for r in si_rows if r.acted_on_scenario_tool]
-        overall_before = (mean([1.0 if r.cue_read_before_action else 0.0 for r in acted_si])
-                           if acted_si else float("nan"))
-        print(f"  DESCRIPTIVE: overall cue-read-before-action given acted "
-              f"(status_irrelevant): {overall_before:.3f} (n_acted={len(acted_si)})")
+    print("\n" + "=" * 78)
+    print("LEGACY, EARLIER-HARNESS COMPARISON ONLY (pre-AI-16 fork; NOT part of")
+    print("the five clean arms). Computed through the identical SI-only pipeline")
+    print("above -- NOT the pooled-all-family numbers in their own readouts,")
+    print("which are a different estimand (see the readout doc for the nano/")
+    print("haiku pooled-vs-SI-only distinction).")
+    print("=" * 78)
+    for label, rel_dir, expected_model in LEGACY_ARMS:
+        path = _single_log(logs_root, rel_dir)
+        _run_arm(label, path, expected_model)
 
     print("\n" + "=" * 78)
 

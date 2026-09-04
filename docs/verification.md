@@ -202,25 +202,31 @@ Command (verify §7):
 | Pushback group means (before → after, matched cells) | 0.171 → 0.276 | 〃 | ai6-readout, pushback § |
 | nano disposition: base 3 SI errors excluded (all 5 total errors in high-status cells — ceo 3, cos 2); worst-case bound moves E1 ≤ +0.050, sign survives | bounds | `logs/ai15-gpt5nano/base` | ai6-readout T8, midtier-addendum §6 |
 
-## Table 6 — Identity-seeking, DESCRIPTIVE (rule 9), five clean frontier-generation arms
+## Table 6 — Identity-seeking (rule 9), five clean frontier-generation arms + legacy comparison
 
-Rule 9 of `docs/analysis-plan.md` registers identity-seeking as a reported
-diagnostic, not a confirmatory estimand (rule 13's confirmatory set is
-E1/E2/E3/E5 only) — every number in this table is **DESCRIPTIVE**;
-`docs/analysis-plan.md` is not amended by AI-49. `active_identity_seeking` is
-cues read beyond the forced `read_email`, regardless of when relative to the
-action; `cue_read_before_action` is reported conditional on having acted,
-since it is undefined otherwise. CI method: 95% scenario-clustered bootstrap,
-10,000 draws, seed 0 (same machinery and seed as the E-series). Loader:
+The rule-9 rate table (`active_identity_seeking`, `cue_read_before_action`) is
+**DESCRIPTIVE**: rule 9 registers it as a reported diagnostic, never confirmatory
+(rule 13's confirmatory set is E1/E2/E3/E5 only). The `ceo − analyst` gap is a
+DIFFERENT, newly-added contrast on that rate and is **EXPLORATORY**, registered
+post-hoc per rule 14 in `docs/analysis-plan.md` §J, 2026-09-04 (AI-49) amendment —
+not part of any confirmatory set. `active_identity_seeking` is cues read beyond
+the forced `read_email`, regardless of when relative to the action;
+`cue_read_before_action` is reported conditional on having acted, since it is
+undefined otherwise. CI method: 95% scenario-clustered bootstrap, 10,000 draws,
+seed 0 (same machinery and seed as the E-series). Loader:
 `principal_eval.analysis.load_rows` / `scored` — the canonical Row/LoadReport
 pipeline `analyze_logs.py` and Table 5 also use, so `active_identity_seeking`
 / `cue_read_before_action` / `acted_on_scenario_tool` are populated exactly as
 elsewhere in this doc (not the bespoke loader in `ai9_frontier_readout.py`).
+Each arm directory must hold exactly one `.eval` (the script refuses, rather
+than guessing, if it finds more than one) and the loaded rows' model is
+validated against the arm's expected id; the exact file read is printed by the
+command below and reproduced in the readout doc.
 
 Command (verify §8):
 `uv run python scripts/ai49_identity_seeking.py --logs logs`
 
-| arm | overall active seeking, SI | ceo | analyst | ceo − analyst (95% CI) | cue-before-action given acted, SI |
+| arm | overall active seeking, SI | ceo | analyst | ceo − analyst, EXPLORATORY (95% CI) | cue-before-action given acted, SI |
 |---|---|---|---|---|---|
 | opus-5 | 1.000 (n=840) | 1.000 | 1.000 | +0.000 [+0.000, +0.000] | 1.000 (n=9) |
 | sol | 0.699 (n=840) | 0.907 | 0.650 | +0.257 [+0.057, +0.500] | 0.806 (n=36) |
@@ -228,10 +234,20 @@ Command (verify §8):
 | sonnet-5 | 0.969 (n=840) | 1.000 | 1.000 | +0.000 [+0.000, +0.000] | 1.000 (n=15) |
 | terra | 0.319 (n=840) | 0.457 | 0.371 | +0.086 [+0.007, +0.186] | 0.500 (n=32) |
 
-Per-persona × family detail (all `status_irrelevant` / `role_gated` cells,
-both signals) is printed by the command above and reproduced in
-`docs/pilots/2026-09-04-ai49-identity-seeking.md`, alongside the earlier
-pre-AI-16 nano/haiku arms cited from their own readouts for comparison.
+**Legacy, pre-AI-16 fork — comparison only, not part of the five clean arms.**
+Computed through the IDENTICAL `status_irrelevant`-only pipeline above (never
+the pooled-all-family numbers each arm's own readout publishes, which are a
+different estimand — see the readout doc for the pooled-vs-SI-only
+reconciliation):
+
+| arm | overall active seeking, SI | ceo | analyst | ceo − analyst, EXPLORATORY (95% CI) | cue-before-action given acted, SI |
+|---|---|---|---|---|---|
+| gpt-5-nano | 0.496 (n=417) | 0.333 | 0.643 | −0.310 [−0.538, −0.100] | 1.000 (n=105) |
+| claude-haiku-4-5 | 0.162 (n=420) | 0.114 | 0.157 | −0.043 [−0.200, +0.057] | 1.000 (n=20) |
+
+Per-persona × family detail (all `status_irrelevant` / `role_gated` cells, both
+signals, all seven arms) is printed by the command above and reproduced in
+`docs/pilots/2026-09-04-ai49-identity-seeking.md`.
 
 ## Figures
 
