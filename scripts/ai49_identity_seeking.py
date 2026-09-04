@@ -9,15 +9,20 @@ The rule-9 rate table (active_identity_seeking / cue_read_before_action, by pers
 x condition x family) is DESCRIPTIVE: rule 9 of docs/analysis-plan.md registers it
 as a reported diagnostic, never a confirmatory estimand (rule 13's confirmatory set
 is E1/E2/E3/E5 only), and this script prints it unchanged -- nothing here enters
-that set.
+that set. Per rule 3, any individual table CELL with n < 20 is EXPLORATORY, flagged
+inline with `*` (the active-seeking columns never drop below n=28 by design; only
+the conditional cue-before-action-given-acted cells get this sparse).
 
-The ceo-analyst active-seeking gap this script ALSO computes is a different thing:
-a NEW contrast on the registered rate, invented after the underlying logs already
-existed, and per rule 14 it is recorded in docs/analysis-plan.md Section J's
-2026-09-04 (AI-49) amendment (append-only -- see that entry for the full estimand
-definition). It is labelled EXPLORATORY throughout this script's output, the
-verification doc and the readout -- not DESCRIPTIVE, and not part of any
-confirmatory set.
+This script ALSO computes three post-hoc numbers not in rule 9's registration --
+the ceo-analyst active-seeking gap, and two pooled-across-persona overall rates
+(overall SI active-seeking; overall cue-read-before-action given acted). All three
+are NEW derived estimands, invented after the underlying logs already existed, and
+per rule 14 all three are recorded in docs/analysis-plan.md Section J's 2026-09-04
+(AI-49) amendment (append-only -- see that entry for the full estimand
+definitions). All three are labelled EXPLORATORY throughout this script's output,
+the verification doc and the readout -- not DESCRIPTIVE, and not part of any
+confirmatory set, on any of the seven arms this script reports (five clean +
+two legacy comparison-only).
 
 This script reimplements no statistic. It is a thin driver over three functions
 that already exist and are unchanged:
@@ -37,9 +42,11 @@ that already exist and are unchanged:
     (status_irrelevant only, mirroring `deference_gap_by_rung`'s ceo/analyst gap
     machinery but on the seeking outcome instead of compliance).
 
-The two extra numbers per arm (the overall status-irrelevant active-seeking rate,
-and cue-read-before-action given acted pooled over personas) are plain means over
-`identity_seeking_rate`'s own inputs -- no new statistical machinery.
+The two pooled-mean numbers per arm (the overall status-irrelevant active-seeking
+rate, and cue-read-before-action given acted pooled over personas) are plain means
+over `identity_seeking_rate`'s own inputs -- no new statistical machinery, but
+still new ESTIMANDS per the amendment above (a mean pooled across personas is not
+the same claim as the per-persona rates rule 9 registers).
 
 Each arm dir must hold exactly one `.eval` file; the script REFUSES (SystemExit)
 when it finds more than one, rather than silently picking a "latest" -- a stray
@@ -146,7 +153,13 @@ def _fmt(x) -> str:
 
 
 def _fmt_before(d) -> str:
-    return f"{d['rate']:.3f} (n={d['n_acted']})" if d else "--"
+    """Rule 3: any cell with n < 20 is exploratory, not descriptive, and must
+    say so inline rather than only carrying its n -- flagged with a trailing
+    `*` here, with the legend printed once per arm's table."""
+    if not d:
+        return "--"
+    flag = "*" if d["n_acted"] < 20 else ""
+    return f"{d['rate']:.3f} (n={d['n_acted']}){flag}"
 
 
 def _provenance(rows, label: str, expected_model: str) -> str:
@@ -188,6 +201,18 @@ def _fmt_active(rate, n) -> str:
     return f"{rate:.3f} (n={n})" if rate is not None else "--"
 
 
+DISPOSITION_CAVEAT = (
+    "disposition counts hard-error/no-score/limit-hit exclusions ONLY -- the "
+    "rule-15 looper predicate (median + 5x IQR trajectory-length runaway) is "
+    "NOT implemented here, matching the caveat already carried by "
+    "ai9_frontier_readout.py (scripts/ai9_frontier_readout.py:255-258) and "
+    "demonstrated non-trivial by the luna readout (164/1200 sol samples "
+    "flagged when attempted -- docs/pilots/2026-09-03-ai33-luna-endpoint.md). "
+    "\"0 excluded\" below means zero error/limit-hit exclusions, NOT zero "
+    "looper-pattern trajectories."
+)
+
+
 def _disposition(report) -> str:
     """Rule 15/17: excluded samples are bounded, not just counted -- and per
     rule 17 counted BY persona/family, since an exclusion concentrated in one
@@ -195,18 +220,20 @@ def _disposition(report) -> str:
     `_malformed_row` (hard errors, no score) and limit-hit rows both carry
     persona/family metadata even though `scored()` drops them, so this reads
     that metadata off `report.rows` directly rather than off the `scored()`
-    output the rest of `_run_arm` uses."""
+    output the rest of `_run_arm` uses. See DISPOSITION_CAVEAT for what this
+    does NOT count (the unimplemented looper predicate)."""
     excluded = [r for r in report.rows if r.nonterminating or r.limit_hit]
     if not excluded:
-        return (f"disposition: 0 excluded (n_errors={report.n_errors}, "
+        return (f"disposition: 0 error/limit-hit excluded (n_errors={report.n_errors}, "
                 f"n_malformed={report.n_malformed}, n_limit_hit=0)")
     by_cell: dict = {}
     for r in excluded:
         key = (r.persona, r.family, "limit_hit" if r.limit_hit else "error/malformed")
         by_cell[key] = by_cell.get(key, 0) + 1
     cells = ", ".join(f"{p}/{f}/{why}={n}" for (p, f, why), n in sorted(by_cell.items()))
-    return (f"disposition: {len(excluded)} excluded (n_errors={report.n_errors}, "
-            f"n_malformed={report.n_malformed}) -- by cell: {cells}")
+    return (f"disposition: {len(excluded)} error/limit-hit excluded "
+            f"(n_errors={report.n_errors}, n_malformed={report.n_malformed}) "
+            f"-- by cell: {cells}")
 
 
 def _run_arm(label: str, path: str, expected_model: str) -> None:
@@ -233,22 +260,28 @@ def _run_arm(label: str, path: str, expected_model: str) -> None:
               f"{_fmt_active(rg['active_identity_seeking'].get(p), rg_n.get(p)):>18}"
               f"{_fmt_before(si['cue_read_before_action_given_acted'].get(p)):>20}"
               f"{_fmt_before(rg['cue_read_before_action_given_acted'].get(p)):>20}")
+    print("  * n < 20: EXPLORATORY per rule 3, not DESCRIPTIVE -- the active-")
+    print("    seeking columns are never below n=28 (design size), only the")
+    print("    conditional cue<-act columns can be this sparse.")
 
     overall_si = _active_mean(si_rows)
-    print(f"\n  DESCRIPTIVE: overall status-irrelevant active-seeking rate: "
+    print(f"\n  EXPLORATORY (analysis-plan.md §J AI-49, item 1b): overall status-"
+          f"irrelevant active-seeking rate (pooled across personas): "
           f"{overall_si:.3f} (n={len(si_rows)})")
 
     gap = ceo_minus_analyst_active_seeking(si_rows)
-    print(f"  EXPLORATORY (analysis-plan.md §J AI-49): ceo - analyst active-seeking gap "
-          f"(status_irrelevant, 95% scenario-clustered bootstrap, seed={SEED}, "
-          f"{BOOT} draws): "
+    print(f"  EXPLORATORY (analysis-plan.md §J AI-49, item 1a): ceo - analyst "
+          f"active-seeking gap (status_irrelevant, 95% scenario-clustered "
+          f"bootstrap, seed={SEED}, {BOOT} draws): "
           f"{gap['point']:+.3f} [{gap['lo']:+.3f}, {gap['hi']:+.3f}]")
 
     acted_si = [r for r in si_rows if r.acted_on_scenario_tool]
     overall_before = (mean([1.0 if r.cue_read_before_action else 0.0 for r in acted_si])
                        if acted_si else float("nan"))
-    print(f"  DESCRIPTIVE: overall cue-read-before-action given acted "
-          f"(status_irrelevant): {overall_before:.3f} (n_acted={len(acted_si)})")
+    print(f"  EXPLORATORY (analysis-plan.md §J AI-49, item 1c): overall cue-read-"
+          f"before-action given acted (status_irrelevant, pooled across personas): "
+          f"{overall_before:.3f} (n_acted={len(acted_si)})"
+          f"{'  *n<20' if len(acted_si) < 20 else ''}")
 
 
 def main() -> None:
@@ -261,10 +294,17 @@ def main() -> None:
 
     print("=" * 78)
     print("AI-49 -- RULE-9 IDENTITY-SEEKING, FIVE CLEAN FRONTIER-GENERATION ARMS")
-    print("The rule-9 rate table is DESCRIPTIVE (a registered secondary diagnostic,")
-    print("never confirmatory -- rule 13's set is E1/E2/E3/E5 only). The ceo-analyst")
-    print("gap is EXPLORATORY, registered post-hoc in docs/analysis-plan.md Section J,")
-    print("2026-09-04 (AI-49) amendment -- not part of any confirmatory set.")
+    print("The rule-9 rate table (by persona x condition x family, unpooled, no")
+    print("contrast) is DESCRIPTIVE -- a registered secondary diagnostic, never")
+    print("confirmatory (rule 13's set is E1/E2/E3/E5 only). Any table cell with")
+    print("n < 20 is EXPLORATORY per rule 3, flagged with * inline. The ceo-analyst")
+    print("gap and the two pooled-across-persona overall rates are three separate")
+    print("post-hoc estimands, all EXPLORATORY, registered in docs/analysis-plan.md")
+    print("Section J's 2026-09-04 (AI-49) amendment -- none part of any")
+    print("confirmatory set, on any of the seven arms below (five clean + two")
+    print("legacy comparison-only).")
+    print()
+    print(DISPOSITION_CAVEAT)
     print("=" * 78)
 
     for label, rel_dir, expected_model in ARMS:

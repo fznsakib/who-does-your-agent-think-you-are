@@ -2,11 +2,18 @@
 
 **Date:** 2026-09-04
 **Status:** the rule-9 rate table (`active_identity_seeking`,
-`cue_read_before_action`) is **DESCRIPTIVE** — rule 9 of `docs/analysis-plan.md`
-registers it as a reported diagnostic, never a confirmatory estimand (rule 13's
-confirmatory set is E1/E2/E3/E5 only). The `ceo − analyst` gap on that rate is a
-DIFFERENT, newly-added contrast and is **EXPLORATORY**, registered post-hoc per
-rule 14 in `docs/analysis-plan.md` §J, 2026-09-04 (AI-49) amendment.
+`cue_read_before_action`, by persona × condition × family, unpooled, no
+contrast) is **DESCRIPTIVE** — rule 9 of `docs/analysis-plan.md` registers it as
+a reported diagnostic, never a confirmatory estimand (rule 13's confirmatory set
+is E1/E2/E3/E5 only). Any individual cell with n < 20 is **EXPLORATORY** per
+rule 3 (flagged inline with `*` below — the active-seeking columns never drop
+below n=28 by design, only the conditional cue-before-action-given-acted cells
+get this sparse). The `ceo − analyst` gap and the two pooled-across-persona
+overall rates (overall SI active seeking; overall cue-before-action given
+acted) are three DIFFERENT, newly-added post-hoc estimands and are
+**EXPLORATORY**, registered per rule 14 in `docs/analysis-plan.md` §J,
+2026-09-04 (AI-49) amendment — not part of any confirmatory set, on any of the
+seven arms (five clean + two legacy comparison-only).
 **Command:**
 `uv run python scripts/ai49_identity_seeking.py --logs logs`
 (also section 8 of `uv run python scripts/verify_headline_numbers.py`)
@@ -22,10 +29,17 @@ as every other table in `docs/verification.md`. Metric: `identity_seeking_rate`
 (rule 9), unchanged. **Provenance** (rule 22): model, variant (must be `base`),
 and judge-model homogeneity (including a mixture of known-vs-unset judge) are
 hard-validated per arm — a mismatch aborts the run rather than printing a
-plausible-looking wrong number. **Disposition** (rule 15/17): excluded rows
-(hard error / no score / limit-hit) are counted per arm AND broken down by
+plausible-looking wrong number. **Disposition** (rule 15/17): excluded
+hard-error/no-score/limit-hit rows are counted per arm AND broken down by
 persona × family × reason, since an exclusion concentrated in one cell
 reweights that cell's rate rather than just shrinking a denominator evenly.
+This does **NOT** cover the rule-15 looper predicate (median + 5× IQR
+trajectory-length runaway), which is not implemented here — same caveat
+`ai9_frontier_readout.py` already carries (`scripts/ai9_frontier_readout.py:
+255-258`), demonstrated non-trivial by the luna readout (164/1200 sol samples
+flagged when attempted, `2026-09-03-ai33-luna-endpoint.md`). "0 excluded"
+below means zero error/limit-hit exclusions, not zero looper-pattern
+trajectories.
 
 ## Correction: the legacy (nano/haiku) rows are recomputed SI-only, not cited pooled figures
 
@@ -90,14 +104,18 @@ seed 0, matching the E-series machinery) computed identically for every arm —
 five clean arms plus the two legacy arms recomputed SI-only per the correction
 above. `n` on the ceo/analyst columns is that persona's own SI cell size (equal
 to the overall SI n / 6 for the five clean arms; unequal for nano — see
-Disposition).
+Disposition). "overall active seeking" and "cue-before-action given acted" are
+BOTH EXPLORATORY (pooled-across-persona post-hoc estimands, items 1b/1c of the
+AI-49 amendment), not DESCRIPTIVE; a `*` additionally marks a cue-before-action
+cell with n < 20 (rule 3 — a second, independent reason that cell is
+exploratory).
 
-| arm | overall active seeking, SI | ceo | analyst | ceo − analyst, EXPLORATORY | cue-before-action given acted, SI | log file read |
+| arm | overall active seeking, SI, EXPLORATORY | ceo | analyst | ceo − analyst, EXPLORATORY | cue-before-action given acted, SI, EXPLORATORY | log file read |
 |---|---|---|---|---|---|---|
-| **claude-opus-5** | 1.000 (n=840) | 1.000 (n=140) | 1.000 (n=140) | +0.000 [+0.000, +0.000] | 1.000 (n=9) | `ai9-frontier/opus5-base/2026-09-03T16-58-39-00-00_..._2AfvPf83Gx6wYgPFuF4onY.eval` |
+| **claude-opus-5** | 1.000 (n=840) | 1.000 (n=140) | 1.000 (n=140) | +0.000 [+0.000, +0.000] | 1.000 (n=9)* | `ai9-frontier/opus5-base/2026-09-03T16-58-39-00-00_..._2AfvPf83Gx6wYgPFuF4onY.eval` |
 | **gpt-5.6-sol** | 0.699 (n=840) | 0.907 (n=140) | 0.650 (n=140) | +0.257 [+0.057, +0.500] | 0.806 (n=36) | `ai9-frontier/gpt56sol-base/2026-09-03T16-58-41-00-00_..._bsS2a4f9WS2iAw39PQhkh6.eval` |
 | **gpt-5.6-luna** | 0.349 (n=840) | 0.429 (n=140) | 0.350 (n=140) | +0.079 [−0.007, +0.171] | 0.909 (n=33) | `ai9-frontier/gpt56luna-base/2026-09-03T18-44-22-00-00_..._ejF2RL2cqTq9sYdA8rMYtS.eval` |
-| **claude-sonnet-5** | 0.969 (n=840) | 1.000 (n=140) | 1.000 (n=140) | +0.000 [+0.000, +0.000] | 1.000 (n=15) | `ai31-midtier/sonnet5-base/2026-09-03T18-35-41-00-00_..._2h9oUfo54FMAkKagNgej4i.eval` |
+| **claude-sonnet-5** | 0.969 (n=840) | 1.000 (n=140) | 1.000 (n=140) | +0.000 [+0.000, +0.000] | 1.000 (n=15)* | `ai31-midtier/sonnet5-base/2026-09-03T18-35-41-00-00_..._2h9oUfo54FMAkKagNgej4i.eval` |
 | **gpt-5.6-terra** | 0.319 (n=840) | 0.457 (n=140) | 0.371 (n=140) | +0.086 [+0.007, +0.186] | 0.500 (n=32) | `ai31-midtier/terra-base/2026-09-03T18-35-42-00-00_..._aKhRC5aRhbYZBPmaaqL28V.eval` |
 | gpt-5-nano (legacy, earlier harness) | 0.496 (n=417) | 0.333 (n=69) | 0.643 (n=70) | −0.310 [−0.538, −0.100] | 1.000 (n=105) | `ai15-gpt5nano/base/2026-09-03T08-37-22-00-00_..._GKwgCw2DNnZyGKcmY5cagz.eval` |
 | claude-haiku-4-5 (legacy, earlier harness) | 0.162 (n=420) | 0.114 (n=70) | 0.157 (n=70) | −0.043 [−0.200, +0.057] | 1.000 (n=20) | `ai5-pilot/haiku-base/2026-09-02T20-35-49-00-00_..._T6UbXCmx2hWiV8UbPrrVey.eval` |
@@ -109,7 +127,12 @@ The two legacy rows are printed for comparison only and are never counted among
 
 `SI` = status_irrelevant, `RG` = role_gated. Both signals, both families, all six
 personas (`--` = no cell / no acted samples). `n` on the active-seeking columns
-is that cell's scored-row count (rule 15 exclusions already removed).
+is that cell's scored-row count (rule 15 exclusions already removed; DESCRIPTIVE,
+per rule 9's registered table — these columns never drop below n=28). The
+cue-before-action-given-acted columns are conditional on having acted and are
+frequently n < 20 (as low as n=1): per rule 3 every cell in these two columns is
+**EXPLORATORY**, not DESCRIPTIVE, regardless of its individual n — the tables
+below print the exact n for each so a reader can see how thin any given cell is.
 
 ### opus-5 (`logs/ai9-frontier/opus5-base`)
 
