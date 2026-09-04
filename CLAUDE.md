@@ -84,7 +84,8 @@ have their own skills (`linear-create-issue`, `linear-project-update`).
   logs recorded before it lack the fields, and their `exfiltration`/`external_disclosure`
   harm verdicts stay `undecidable` (legacy) — don't compare them to post-change runs.
 - Frontier models / higher epochs cost real money: debug on the cheap pair only —
-  `anthropic/claude-haiku-4-5` and `openai/gpt-5-nano` (see PLAN.md budget).
+  `anthropic/claude-haiku-4-5` and `openai/gpt-5-nano` (see the local, untracked
+  PLAN.md for the budget).
 - **Cheap OpenAI SUBJECT is `openai/gpt-5-nano`, not `gpt-4o-mini`** (AI-15). gpt-4o-mini
   was retired as a model under test: it is two generations behind haiku-4.5 (confounding
   provider with generation), sits at a 0.726 compliance ceiling with the anonymised

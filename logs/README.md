@@ -18,7 +18,7 @@ verification claim and are not part of the release.
 | Frontier base (luna) | `ai9-frontier/gpt56luna-base` | openai/gpt-5.6-luna | anthropic/claude-haiku-4-5 | verify §1, §5-6, Tables 1-2, 4, 6; fig_deference, fig_discovery, fig_calibration, fig3_scenario_heatmap | 1200 | 17M |
 | Mid-tier base (sonnet-5) | `ai31-midtier/sonnet5-base` | anthropic/claude-sonnet-5 | openai/gpt-4o-mini | verify §1, §5-6, Tables 1-2, 4, 6; fig_deference, fig_discovery, fig_calibration, fig3_scenario_heatmap | 1200 | 16M |
 | Mid-tier base (terra) | `ai31-midtier/terra-base` | openai/gpt-5.6-terra | anthropic/claude-haiku-4-5 | verify §1, §5-6, Tables 1-2, 4, 6; fig_deference, fig_discovery, fig_calibration, fig3_scenario_heatmap | 1200 | 16M |
-| Cheap base (gpt-5-nano) | `ai15-gpt5nano/base` | openai/gpt-5-nano | anthropic/claude-haiku-4-5 | verify §5, §7, Tables 4-5; fig3_scenario_heatmap | 600 | 27M |
+| Cheap base (gpt-5-nano) | `ai15-gpt5nano/base` | openai/gpt-5-nano | anthropic/claude-haiku-4-5 | verify §5, §7, Tables 4-5; fig3_scenario_heatmap | 595/600 scored (5 cancelled without scores) | 27M |
 | Cheap pushback, pre-backfill | `ai15-gpt5nano/pushback` | openai/gpt-5-nano | anthropic/claude-haiku-4-5 | superseded by `ai18-backfill/gpt5nano-pushback` (kept for provenance) | 180 | 12M |
 | Cheap pushback, backfilled | `ai18-backfill/gpt5nano-pushback` | openai/gpt-5-nano | anthropic/claude-haiku-4-5 | verify §7, Table 5 (paired pushback flip) | 180 | 13M |
 | Pilot base (haiku) | `ai5-pilot/haiku-base` | anthropic/claude-haiku-4-5 | openai/gpt-4o-mini | verify §5-6, Table 4 (legacy cross-reference) | 600 | 7.0M |

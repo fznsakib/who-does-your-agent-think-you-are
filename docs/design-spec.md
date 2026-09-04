@@ -1,6 +1,6 @@
 # Spec — Inferred user status & the self-referential frontier-lab harness
 
-**Status:** settled via grilling interview, 2026-09-01. Implements the Sept-1 "real harness" block of `PLAN.md`.
+**Status:** settled via grilling interview, 2026-09-01. Implements the Sept-1 "real harness" block of the working plan (local, untracked `PLAN.md`).
 
 ## Research question
 

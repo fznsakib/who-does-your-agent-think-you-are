@@ -176,7 +176,8 @@ The evaluation tasks enforce per-sample message and token limits.
 ## Reproduce the application results
 
 Every headline number in the MATS write-up regenerates from the logs on disk.
-This does not need API keys — it only reads committed `.eval` files.
+This does not need API keys — it only reads `.eval` files downloaded from the
+release below (they are git-ignored, not committed).
 
 Clone the repository and install its dependencies (see Setup above), then
 download the logs:
