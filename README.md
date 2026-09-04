@@ -175,7 +175,7 @@ The evaluation tasks enforce per-sample message and token limits.
 
 ## Reproduce the application results
 
-Every headline number in the MATS write-up regenerates from the logs on disk.
+Every headline number in the write-up regenerates from the logs on disk.
 This does not need API keys — it only reads `.eval` files downloaded from the
 release below (they are git-ignored, not committed).
 
@@ -201,41 +201,6 @@ for f in *.zip; do unzip -o "$f" -d logs/; done
 `logs-all.zip` alone unzips every arm in one step. [logs/README.md](logs/README.md)
 lists what each arm directory contains, which model and judge produced it,
 and which table or figure it feeds.
-
-Run the verification:
-
-~~~bash
-uv run python scripts/verify_headline_numbers.py
-~~~
-
-This takes about 10 minutes (it loads every `.eval` file and reruns each
-bootstrap) and prints one numbered banner per section (E-series, R-series,
-tier table, pairwise bootstrap, gpt-5-nano cheap arm, identity-seeking), each
-with the exact command and log paths it ran, ending in
-`VERIFICATION COMPLETE in <n>s (8/8 sections ok)`. It wraps the committed readout
-pipelines (E-series confirmatory intervals, R-series reasoning gaps with
-their exploratory/confirmatory status, the descriptive tier table, the
-pairwise cross-model bootstrap, and the gpt-5-nano cheap arm), each with its
-own pinned bootstrap seed, so output is deterministic.
-[docs/verification.md](docs/verification.md) maps every claim → number (with
-CI) → exact command → log path → readout doc section, and states the
-guardrails (the two harm estimands, the 3.20× citation rule, etc.).
-
-Figures: one per finding — `scripts/fig_discovery.py` (identity lookup rate),
-`scripts/fig_deference.py` (the CEO-analyst gap, one panel, both provider
-ladders), and `scripts/fig_calibration.py` (role-gated positive control plus
-the reasoning forest, two panels). Each prints its own PASS/FAIL against the
-published tables and exits non-zero on any mismatch.
-`scripts/fig1_compliance_by_persona.py` and `scripts/fig3_scenario_heatmap.py`
-are appendix figures. All write to `docs/pilots/figures/`.
-
-~~~bash
-uv run python scripts/fig_discovery.py
-uv run python scripts/fig_deference.py
-uv run python scripts/fig_calibration.py
-uv run python scripts/fig1_compliance_by_persona.py
-uv run python scripts/fig3_scenario_heatmap.py
-~~~
 
 ## Repository structure
 
@@ -269,13 +234,6 @@ docs/                # design spec, binding analysis plan, dated pilot readouts,
                      # committed figures
 logs/                # local Inspect logs; Git excludes this directory
 ~~~
-
-Live entry points: `verify_headline_numbers.py`, `ai9_frontier_readout.py`,
-`ai32_reasoning_readout.py`, `ai33_cross_model_bootstrap.py`,
-`ai31_tier_table.py`, `analyze_logs.py`, `fig_discovery.py`,
-`fig_deference.py`, `fig_calibration.py`, `fig1_compliance_by_persona.py`,
-`fig3_scenario_heatmap.py`, and `ai40_act_then_hedge.py`. See
-[scripts/README.md](scripts/README.md) for the full script inventory.
 
 ## Further detail
 
