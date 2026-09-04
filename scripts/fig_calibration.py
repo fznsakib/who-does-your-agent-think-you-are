@@ -59,6 +59,8 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 
+from inspect_ai.log import read_eval_log, read_eval_log_samples  # noqa: E402
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, f"{ROOT}/src")
@@ -106,10 +108,33 @@ AUTH_COLOR = "#009E73"     # Okabe-Ito teal, shared with the discovery figure
 UNAUTH_COLOR = "#CC79A7"   # Okabe-Ito reddish-purple
 
 
+def _require_complete(data: dict, log_dir: str) -> None:
+    """Refuses a non-terminal or truncated log before any mean is computed.
+
+    `F.load()` (Table 1's own loader) deliberately tolerates a non-success
+    log by reading only the samples present (`all_samples_required=False` in
+    that case) -- correct for a general-purpose loader, wrong for a figure
+    script: a balanced truncation can still land on the same rounded
+    component means and gap, pass check_left(), and silently overwrite the
+    committed figure with numbers that no longer reproduce the published
+    denominators.
+    """
+    if data["header"].status != "success":
+        raise SystemExit(
+            f"{log_dir}: log status is {data['header'].status!r}, not "
+            f"'success' -- refusing to treat a non-terminal log as complete.")
+    if data["loaded"] != data["expected"]:
+        raise SystemExit(
+            f"{log_dir}: loaded {data['loaded']} samples but the log header "
+            f"reports total_samples={data['expected']} -- refusing to treat "
+            f"this as a complete run.")
+
+
 def left_panel_values(log_dir: str) -> dict:
     """Authorised/unauthorised compliance means, role_gated + identified only,
     from Table 1's own loader and cluster-mean estimator."""
     data = F.load(log_dir)
+    _require_complete(data, log_dir)
     rows = data["rows"]
     rg_id = [r for r in rows if r.family == "role_gated" and r.condition == "identified"]
     scens = sorted({r.scenario for r in rg_id})
@@ -155,10 +180,34 @@ RIGHT_ROWS = [
 FILLED_VERDICTS = {"survivor"}
 
 
+def _require_complete_eval(path: str) -> None:
+    """Refuses a non-terminal or truncated log before it feeds the reasoning
+    pipeline. `load_reasoning_rows()` sets `all_samples_required=False` for a
+    non-success log and `reasoning_report()` never compares the loaded count
+    against the header total, so an interrupted arm whose surviving subset
+    happens to retain the published rounded R1 interval and R6 verdict could
+    otherwise pass check_right() and silently overwrite the figure."""
+    header = read_eval_log(path, header_only=True)
+    if header.status != "success":
+        raise SystemExit(
+            f"{path}: log status is {header.status!r}, not 'success' -- "
+            f"refusing to treat a non-terminal log as complete.")
+    expected = header.results.total_samples if header.results else None
+    if expected is not None:
+        seen = sum(1 for _ in read_eval_log_samples(path, all_samples_required=True))
+        if seen != expected:
+            raise SystemExit(
+                f"{path}: loaded {seen} samples but the log header reports "
+                f"total_samples={expected} -- refusing to treat this as a "
+                f"complete run.")
+
+
 def right_panel_block(log_dir: str) -> dict:
     paths = sorted(glob.glob(f"{log_dir}/**/*.eval", recursive=True))
     if not paths:
         raise SystemExit(f"no .eval under {log_dir}")
+    for path in paths:
+        _require_complete_eval(path)
     report = reasoning_report(load_reasoning_rows(paths))
     blocks = [b for b in report["models"].values() if b["arm"] == "base"]
     if len(blocks) != 1:
