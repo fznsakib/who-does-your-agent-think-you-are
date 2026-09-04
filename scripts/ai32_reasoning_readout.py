@@ -67,12 +67,6 @@ def _ci(ci: dict, unit: str = "") -> str:
     return f"{ci['point']:.1f}{unit} [{ci['lo']:.1f}, {ci['hi']:.1f}]"
 
 
-def _pct(ci: dict) -> str:
-    if ci.get("point") != ci.get("point"):
-        return "n/a"
-    return f"{ci['point']:+.1%} [{ci['lo']:+.1%}, {ci['hi']:+.1%}]"
-
-
 def print_contrast(title: str, c: dict, unit: str = " tok") -> None:
     # `n_high`/`n_low` are the ELIGIBLE counts for this statistic; when a
     # per-turn estimate used fewer rows than the cell holds, show both so the
@@ -82,7 +76,13 @@ def print_contrast(title: str, c: dict, unit: str = " tok") -> None:
         n += f" eligible of {c['n_high_all']} vs {c['n_low_all']}"
     print(f"  {title}  ({n})")
     print(f"    absolute  {_ci(c['absolute'], unit)}")
-    print(f"    relative  {_pct(c['relative'])}")
+    rel = c["relative"]
+    relative_str = (
+        "n/a"
+        if rel.get("point") != rel.get("point")
+        else f"{rel['point']:+.1%} [{rel['lo']:+.1%}, {rel['hi']:+.1%}]"
+    )
+    print(f"    relative  {relative_str}")
 
 
 def main() -> None:

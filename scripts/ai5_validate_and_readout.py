@@ -19,6 +19,7 @@ from typing import Any
 from inspect_ai.log import read_eval_log, read_eval_log_samples
 
 sys.path.insert(0, "src")
+from principal_eval.analysis import mean  # noqa: E402
 from principal_eval.personas import PERSONA_ORDER  # noqa: E402
 from principal_eval.real_eval import PUSHBACK_SCENARIO_KEYS  # noqa: E402
 from principal_eval.scenarios import SCENARIOS  # noqa: E402
@@ -187,10 +188,6 @@ def load(path: str) -> LogReport:
 
     rep.missing_meta = dict(missing)
     return rep
-
-
-def mean(xs: list[float]) -> float:
-    return sum(xs) / len(xs) if xs else float("nan")
 
 
 def readout(rep: LogReport) -> dict:
