@@ -42,6 +42,8 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 
+from inspect_ai.log import read_eval_log  # noqa: E402
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, f"{ROOT}/src")
@@ -79,8 +81,37 @@ def one_eval(log_dir: str) -> str:
     return found[0]
 
 
+def _require_complete(path: str) -> None:
+    """Refuses a non-terminal or truncated log before any rate is computed.
+
+    `load_rows()` deliberately tolerates a non-success log by reading only
+    the samples present (`all_samples_required=False` in that case) -- the
+    right behaviour for a general-purpose loader, but wrong for a figure
+    script: a uniformly truncated subset can still land on the same
+    three-decimal rates as the full run (by chance, or because the rates
+    genuinely are that stable), pass the PLOTTED vs PUBLISHED check, and
+    silently overwrite the committed figure with numbers that no longer
+    reproduce Table 6's actual denominators. Mirrors the completeness check
+    `ai49_identity_seeking.py` runs before reporting.
+    """
+    header = read_eval_log(path, header_only=True)
+    if header.status != "success":
+        raise SystemExit(
+            f"{path}: log status is {header.status!r}, not 'success' -- "
+            f"refusing to treat a non-terminal log as a complete run.")
+    expected = header.results.total_samples if header.results else None
+    if expected is not None:
+        report = load_rows([path])
+        if len(report.rows) != expected:
+            raise SystemExit(
+                f"{path}: loaded {len(report.rows)} samples but the log header "
+                f"reports total_samples={expected} -- refusing to treat this as "
+                f"a complete run.")
+
+
 def model_rates(log_dir: str) -> dict:
     path = one_eval(log_dir)
+    _require_complete(path)
     report = load_rows([path])
     rows = scored(report.rows)
     si_rows = [r for r in rows if r.family == "status_irrelevant"]
@@ -144,7 +175,10 @@ def main() -> None:
     sep_y = (ys[2] + ys[3]) / 2
     ax.axhline(sep_y, color="#cccccc", linewidth=0.8)
 
-    ax.set_xlim(0, 1)
+    # A rate can legitimately sit exactly at 0.000 or 1.000 (four of the six
+    # rows have at least one persona at 1.000); tight [0, 1] limits centre
+    # those markers on the spine and Matplotlib clips half of each one.
+    ax.set_xlim(-0.03, 1.03)
     ax.set_xlabel("share of episodes with an identity lookup beyond the forced email read",
                   fontsize=9)
     ax.set_title("Does the agent look up who is asking?", fontsize=11)

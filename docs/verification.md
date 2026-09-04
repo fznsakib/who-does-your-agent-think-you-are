@@ -287,12 +287,18 @@ Carries the discovery claim: does the agent look up who is asking beyond the
 forced initial identity read? One row per model, ordered provider then tier —
 claude-haiku-4-5, claude-sonnet-5, claude-opus-5, gpt-5.6-luna, gpt-5.6-terra,
 gpt-5.6-sol (no gpt-5-nano — a cheap development subject, not a tier-ladder
-endpoint). Two marks per row: the CEO and analyst rates of active identity
-seeking, status_irrelevant only, plus a small pooled-overall tick. Reuses
+endpoint), with the same provider rule as `fig_deference.py` (between
+claude-opus-5 and gpt-5.6-luna). Two marks per row: the CEO and analyst rates
+of active identity seeking, status_irrelevant only, each carrying a small
+fixed vertical offset so a row where the two coincide (sonnet-5 and opus-5,
+both 1.000) still shows two markers. The pooled-overall rate is checked
+against Table 6 by the script but not plotted. Reuses
 `principal_eval.analysis.load_rows` / `scored` / `identity_seeking_rate` —
 the functions behind Table 6 — so a plotted rate cannot drift from that
-table. The script prints every plotted rate next to the Table 6 value with
-PASS/FAIL, and exits non-zero on any FAIL.
+table. The script validates each arm's log is a complete, terminal run
+(status `success`, loaded sample count matching the header's total) before
+computing rates, then prints every plotted rate next to the Table 6 value
+with PASS/FAIL, and exits non-zero on any FAIL.
 
 Command: `uv run python scripts/fig_discovery.py --logs logs`
 
