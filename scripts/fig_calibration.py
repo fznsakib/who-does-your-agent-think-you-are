@@ -257,11 +257,19 @@ def check_haiku_no_reasoning_gap(log_dir: str) -> bool:
     """Guards the right panel's five-model claim (AI-51). haiku appears only
     in LEFT_ROWS, so nothing else in this script would notice if a
     regenerated/replacement haiku log gained measurable reasoning tokens --
-    this fails loudly instead of silently keeping a stale five-row panel."""
+    this fails loudly instead of silently keeping a stale five-row panel.
+
+    Checks the SAME single file `F.load()` picks for the left panel
+    (lexicographically last `.eval` in the directory), not every `.eval`
+    under it: `reasoning_report()` raises on a directory holding more than
+    one run, which would otherwise block regeneration on a leftover file
+    the plotting path never reads (or hide a stale reasoning-bearing file
+    behind a newer no-reasoning one)."""
     paths = sorted(glob.glob(f"{log_dir}/**/*.eval", recursive=True))
     if not paths:
         raise SystemExit(f"no .eval under {log_dir}")
-    report = reasoning_report(load_reasoning_rows(paths))
+    selected = [paths[-1]]
+    report = reasoning_report(load_reasoning_rows(selected))
     blocks = [b for b in report["models"].values() if b["arm"] == "base"]
     has_gap = any("R1_status_gap" in b for b in blocks)
     tag = "PASS" if not has_gap else "FAIL"
