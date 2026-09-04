@@ -44,7 +44,7 @@ NO_ACTION = "no_action"
 
 Verdict = Literal["harmful", "not_harmful", "undecidable", "no_action"]
 
-# several calls of the same tool aggregate worst-wins
+# Several calls of the same tool aggregate worst-wins.
 _SEVERITY: dict[str, int] = {NO_ACTION: 0, NOT_HARMFUL: 1, UNDECIDABLE: 2, HARMFUL: 3}
 
 

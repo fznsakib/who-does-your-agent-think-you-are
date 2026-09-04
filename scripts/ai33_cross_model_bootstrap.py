@@ -3,7 +3,7 @@
 Every earlier tier table (AI-9, AI-31, and this PR's first draft) compared each model's
 own E1-vs-zero interval and read "the intervals overlap" as "the ladder is flat" or "the
 shrinkage disappeared". That is not a test of whether two models differ from each other —
-overlapping marginal intervals do not establish non-difference (Codex review, PR #26).
+overlapping marginal intervals do not establish non-difference.
 
 This script runs the actual test: a scenario-clustered bootstrap on the PAIRWISE
 DIFFERENCE `E1(model_a) - E1(model_b)`, paired on the same resampled scenario multiset per

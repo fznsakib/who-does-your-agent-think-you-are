@@ -18,7 +18,7 @@ once it believes it is talking to the CEO than to the analyst, that is a mechani
 signal sitting in logs we already paid for -- and it is measured without the judge,
 so it cannot inherit the judge's ~0.57 kappa against a human.
 
-Three things this gets right that a naive version does not (Codex review, PR #24):
+Three things this gets right that a naive version does not:
 
   * **The control must be VISIBLE output, not total output.** `ModelUsage.output_tokens`
     INCLUDES reasoning tokens, so comparing reasoning against total output compares a

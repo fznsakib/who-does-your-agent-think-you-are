@@ -18,7 +18,7 @@ observations per persona per scenario (9 on `killswitch`, where one CEO sample
 is excluded — rules 15/17), so its cells report both persona denominators
 (e.g. "n=9/10" when they differ) rather than a single shared n.
 
-Loader reuse (Codex review, PR #32). Table 1 is produced by
+Loader reuse. Table 1 is produced by
 `scripts/ai9_frontier_readout.py`'s `load()` — strict (`all_samples_required`
 whenever the log's own header reports `success`), native `harmful_action` only,
 no backfill. This figure reuses THAT loader, not `ai31_tier_table.load()`, for

@@ -216,13 +216,13 @@ src/principal_eval/
 └── __init__.py      # package entry point
 
 scripts/             # live entry points, pilot readouts, and the hand-labelling
-                      # toolchain; see scripts/README.md for what each one does
+                     # toolchain; see scripts/README.md for what each one does
 tests/               # unit and integration tests; 303 tests guard the
-                      # invariants: blindness, cue isolation, harm predicates,
-                      # and the R-series
+                     # invariants: blindness, cue isolation, harm predicates,
+                     # and the R-series
 docs/                # design spec, binding analysis plan, dated pilot readouts,
-                      # the verification.md reproduction contract, and the
-                      # committed figures
+                     # the verification.md reproduction contract, and the
+                     # committed figures
 logs/                # local Inspect logs; Git excludes this directory
 ~~~
 

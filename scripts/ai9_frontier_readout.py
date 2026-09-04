@@ -7,7 +7,7 @@ exploratory; the exploratory reasoning-by-persona probe is a separate script
 (`ai9_reasoning_by_persona.py`) so the two cannot be confused in a table.
 
 The plan rules this script exists to enforce, and the way each was got wrong in a
-previous draft (Codex review of PR #24):
+previous draft:
 
   * rule 2  -- `status_irrelevant` ONLY for E1/E2/E5; `role_gated` appears in E3 and
     nowhere else. Pooling them manufactures a ladder out of correct behaviour.

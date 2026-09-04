@@ -9,7 +9,7 @@ Two restrictions make the numbers comparable, and both cost something:
   * `status_irrelevant` ONLY (rule 2). The superseded all-family figures (+0.302
     nano, +0.130 haiku) pool the role_gated calibration scenarios and must never
     appear in a tier comparison; using them once already inflated a published
-    claim (corrected in PR #24).
+    claim.
   * On the HARM outcome, `exfiltration` and `external_disclosure` are dropped
     from EVERY arm. The AI-23 amendment forbids cross-fork contrasts on those two
     scenarios' harm rates, because the cheap-arm logs predate the structural
@@ -81,9 +81,9 @@ def set_log_root(root: str) -> None:
 
     The arm paths are built from LOGS (env or default) at import, so an explicit
     --logs must rewrite THAT prefix — not the default one — or a caller with
-    AI31_LOG_ROOT set would silently keep reading the environment's tree
-    (Codex review, PR #30). Importers (ai33_cross_model_bootstrap, fig1) call
-    this too, so all three scripts agree on the root.
+    AI31_LOG_ROOT set would silently keep reading the environment's tree.
+    Importers (ai33_cross_model_bootstrap, fig1) call this too, so all three
+    scripts agree on the root.
     """
     global LOGS
     old, LOGS = LOGS, os.path.abspath(root)
