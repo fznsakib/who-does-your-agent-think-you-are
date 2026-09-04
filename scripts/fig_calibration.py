@@ -60,9 +60,12 @@ keeps the shared provider/tier ordering.
 claude-haiku-4-5 is NOT in the right panel (AI-51 checked and did not add
 it): `logs/ai5-pilot/haiku-base` carries zero reasoning tokens on every
 sample (`reasoning_report()` returns no `R1_status_gap` block for it, only
-a "not measurable: this model emitted no reasoning tokens" note) -- this is
-a non-reasoning model on that provider/date, not a missing field, so there
-is no gap to plot. The right panel stays at five rows.
+a "not measurable: this model emitted no reasoning tokens" note), so there
+is no gap to plot. NOT claimed as "haiku is a non-reasoning model" --
+`load_reasoning_rows()` reads `getattr(usage, "reasoning_tokens", None) or
+0`, so an omitted/unexposed field and an explicit zero both read the same
+way here; this is "no exposed reasoning tokens in this log", which is all
+the pipeline can actually distinguish. The right panel stays at five rows.
 
 The script prints every plotted value next to the published value from
 docs/verification.md with PASS/FAIL, and exits non-zero on any FAIL.
@@ -229,7 +232,12 @@ def check_haiku_e3_diagnostics(log_dir: str) -> bool:
     3 per-scenario points -- not just the pooled authorised/unauthorised
     means check_left() already validates. haiku's E3 is not in Table 1 (it
     is not one of the five clean arms), so this is its only place to carry
-    those diagnostics."""
+    those diagnostics.
+
+    Each per-scenario point's authorised side is a single persona x 10
+    epochs (n=10) -- below rule 3's n=20 floor -- so every point is printed
+    with its n and labelled EXPLORATORY (rule 3/20), never read at the same
+    evidentiary status as the pooled clustered gap above it."""
     data = F.load(log_dir)
     rows = data["rows"]
     _, _, e3_fn = F.estimands(rows)[2]
@@ -238,6 +246,10 @@ def check_haiku_e3_diagnostics(log_dir: str) -> bool:
     unreliable = len(scens) < 5   # rule 12 threshold, matches ai9_frontier_readout.MIN_HONEST_CLUSTERS
     obs, lo, hi = F.bootstrap(lambda s: e3_fn(s, 0.5, None), scens)
     per_scenario = {s: e3_fn([s], 0.5, None) for s in scens}
+    n_auth_per_scenario = {
+        s: len([r for r in rg_identified if r.scenario == s and r.authorized])
+        for s in scens
+    }
     pub_lo, pub_hi = PUBLISHED_HAIKU_E3["gap_ci"][1], PUBLISHED_HAIKU_E3["gap_ci"][2]
     pub_pt = PUBLISHED_HAIKU_E3["gap_ci"][0]
     pub_per = PUBLISHED_HAIKU_E3["per_scenario"]
@@ -248,8 +260,10 @@ def check_haiku_e3_diagnostics(log_dir: str) -> bool:
     flag = " [3-CLUSTER, UNRELIABLE per rule 12]" if unreliable else ""
     print(f"  claude-haiku-4-5   E3 compliance gap {obs:+.3f}  95% CI [{lo:+.3f}, {hi:+.3f}]"
           f"{flag}  (published {pub_pt:+.3f} [{pub_lo:+.3f}, {pub_hi:+.3f}])  {tag}")
-    print("    per-scenario points (rule 12): "
-          + ", ".join(f"{s}={v:+.3f}" for s, v in sorted(per_scenario.items())))
+    print("    per-scenario points (rule 12), EXPLORATORY -- n=10 authorised "
+          "persona per scenario, below rule 3's n=20 floor (rule 20): "
+          + ", ".join(f"{s}={v:+.3f} (n_auth={n_auth_per_scenario[s]})"
+                       for s, v in sorted(per_scenario.items())))
     return ok
 
 
