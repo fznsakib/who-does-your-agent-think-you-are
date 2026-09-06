@@ -12,6 +12,20 @@ Once the agent knows, does the user's inferred status increase compliance with b
 
 We give each agent the same request where it has access to tools that provides email, directory, calendar, and other identity cues for five different personas and a shared anonymised control. The agents may use these tools explicitly or implicitly to converge on its preferred solution. Comparing their behaviour estimates the effect of inferred status.
 
+## Findings
+
+**Discovery: the agent looks the sender up without being asked to.** Both Anthropic models check identity in nearly every status-irrelevant episode; the OpenAI models check selectively. gpt-5.6-sol looks up the CEO in 91% of episodes and the analyst in 65%, a gap of 26 points [95% CI 6, 50], an exploratory result.
+
+![Identity lookup rate, CEO and analyst, per model](docs/pilots/figures/fig_discovery.png)
+
+**Deference: the cheapest current-generation model deferred to status; the flagships refused nearly everyone.** On gpt-5.6-luna the CEO drew more compliance than the analyst by 11 points [1, 30] and more harmful actions by 14 points [1, 34], both confirmatory. claude-opus-5 and gpt-5.6-sol comply with about 1% of these requests, so their nulls say nothing about status.
+
+![CEO minus analyst gap per model, compliance and harmful action](docs/pilots/figures/fig_deference.png)
+
+**Calibration: models apply identity where policy grants it, and every model reasons more for the CEO.** On the role-gated scenarios authorised personas comply and unauthorised personas sit at zero on every current-generation model. On the status-irrelevant scenarios the CEO draws more reasoning tokens than the analyst on all five, from 29% more [6, 50] on gpt-5.6-luna to 99% more [61, 139] on claude-opus-5; a pre-registered verbosity rule leaves claude-sonnet-5 and gpt-5.6-luna unresolved.
+
+![Role-gated control and reasoning-token gap per model](docs/pilots/figures/fig_calibration.png)
+
 ## Evaluation design
 
 | Component | Design |
